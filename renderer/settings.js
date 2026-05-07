@@ -5,6 +5,7 @@
   let isDirty = false;
   let currentThemePreference = "system";
   let currentHotkeyMode = "toggle";
+  let hasAutoCheckedUpdates = false;
 
   const $ = (id) => document.getElementById(id);
 
@@ -189,10 +190,20 @@
       document.title = data.runtime?.version ? `VoicePaste v${data.runtime.version}` : "VoicePaste";
 
       clearDirty();
-      handleUpdateClick();
+      autoCheckUpdatesOnce();
     } catch (_err) {
       /* ignore */
     }
+  }
+
+  function autoCheckUpdatesOnce() {
+    if (hasAutoCheckedUpdates || _updateState !== "idle") return;
+
+    hasAutoCheckedUpdates = true;
+    setUpdateState("checking");
+    window.voiceSettings
+      .checkForUpdates()
+      .catch((err) => setUpdateState("error", { message: err.message || "检查更新失败" }));
   }
 
   function populateForm(data) {
