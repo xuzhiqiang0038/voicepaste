@@ -33,6 +33,8 @@ optional=()
 if [[ -z "$platforms" ]]; then
   # All platforms
   required+=(
+    "$dist_dir/VoicePaste-${version}-arm64.dmg"
+    "$dist_dir/VoicePaste-${version}-x64.dmg"
     "$dist_dir/VoicePaste-${version}-arm64.zip"
     "$dist_dir/VoicePaste-${version}-x64.zip"
     "$dist_dir/VoicePaste-${version}-win-x64.exe"
@@ -52,11 +54,13 @@ else
   for p in "${plat_array[@]}"; do
     case "$p" in
       mac-arm64)
+        required+=("$dist_dir/VoicePaste-${version}-arm64.dmg")
         required+=("$dist_dir/VoicePaste-${version}-arm64.zip")
         optional+=("$dist_dir/VoicePaste-${version}-arm64.zip.blockmap")
         has_mac=true
         ;;
       mac-x64)
+        required+=("$dist_dir/VoicePaste-${version}-x64.dmg")
         required+=("$dist_dir/VoicePaste-${version}-x64.zip")
         optional+=("$dist_dir/VoicePaste-${version}-x64.zip.blockmap")
         has_mac=true

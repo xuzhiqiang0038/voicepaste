@@ -155,8 +155,8 @@ Mirror the historical GitHub Release style:
 
 ## Downloads
 
-- `VoicePaste-<version>-arm64.zip` — macOS (Apple Silicon)
-- `VoicePaste-<version>-x64.zip` — macOS (Intel)
+- `VoicePaste-<version>-arm64.dmg` — macOS (Apple Silicon)
+- `VoicePaste-<version>-x64.dmg` — macOS (Intel)
 - `VoicePaste-<version>-win-x64.exe` — Windows (x64 NSIS installer)
 
 **Full Changelog**: https://github.com/that-yolanda/voicepaste/compare/v<previous>...v<version>
@@ -171,6 +171,8 @@ Mirror the historical GitHub Release style:
 Always upload the platform installers and update metadata files required by `electron-updater`:
 
 - macOS:
+  - `VoicePaste-<version>-arm64.dmg`
+  - `VoicePaste-<version>-x64.dmg`
   - `VoicePaste-<version>-arm64.zip`
   - `VoicePaste-<version>-x64.zip`
   - `latest-mac.yml`

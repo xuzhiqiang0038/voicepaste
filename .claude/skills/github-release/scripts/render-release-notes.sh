@@ -47,8 +47,8 @@ echo "$section"
 echo
 echo "## Downloads"
 echo
-echo "- \`VoicePaste-${version}-arm64.zip\` — macOS (Apple Silicon)"
-echo "- \`VoicePaste-${version}-x64.zip\` — macOS (Intel)"
+echo "- \`VoicePaste-${version}-arm64.dmg\` — macOS (Apple Silicon)"
+echo "- \`VoicePaste-${version}-x64.dmg\` — macOS (Intel)"
 echo "- \`VoicePaste-${version}-win-x64.exe\` — Windows (x64 NSIS installer)"
 echo
 echo "**Full Changelog**: ${compare_url}"

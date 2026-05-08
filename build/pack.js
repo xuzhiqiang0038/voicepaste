@@ -4,8 +4,8 @@ const path = require("node:path");
 const { loadDotEnv } = require("./env");
 
 const PLATFORM_MAP = {
-  "mac-arm64": { builder: ["--mac", "zip", "--arm64"], group: "mac" },
-  "mac-x64": { builder: ["--mac", "zip", "--x64"], group: "mac" },
+  "mac-arm64": { builder: ["--mac", "dmg", "zip", "--arm64"], group: "mac" },
+  "mac-x64": { builder: ["--mac", "dmg", "zip", "--x64"], group: "mac" },
   "win-x64": { builder: ["--win", "nsis", "--x64"], group: "win" },
 };
 
@@ -135,7 +135,7 @@ async function main() {
 
   try {
     if (macPlatforms.length > 0) {
-      const macArgs = ["--mac", "zip"];
+      const macArgs = ["--mac", "dmg", "zip"];
       for (const p of macPlatforms) {
         const entry = PLATFORM_MAP[p];
         const archArg = entry.builder.find((a) => a === "--arm64" || a === "--x64");
