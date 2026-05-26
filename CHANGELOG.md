@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.0 (2026-05-26)
+
+- **LLM Text Polishing** — Integrate Vercel AI SDK with 8 provider support (DeepSeek, OpenAI, Anthropic, Gemini, OpenRouter, SiliconFlow, Ollama, custom OpenAI-compatible) for post-processing ASR output (formatting, polishing, translation, etc.).
+- **Prompt Template Management** — New `prompts.json` for managing multiple prompt templates, each with its own hotkey binding and trigger mode for different polishing scenarios.
+- **Real-time Audio Waveform** — Live audio waveform visualization in the floating overlay during recording.
+- **Notification Sounds** — Distinct start and end sounds to indicate recording readiness and recognition success.
+- **DMG Build Output** — Added DMG format for macOS builds, fixing auto-update failures on read-only volumes.
+- **Settings UI Polish** — Multi-provider selector, prompt template editor, refined hotkey keycap display with subtle superscript for left/right modifier distinction.
+
 ## v1.1.0 (2026-05)
 
 - **Settings Home Page** — Added a home page with usage statistics, activity heatmap, and input history for a quick overview of your voice input activity.

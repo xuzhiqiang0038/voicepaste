@@ -25,6 +25,9 @@ A voice input tool for macOS & Windows — trigger with a hotkey, speak, auto-pa
 - **Hotwords** — Custom hotwords to improve recognition accuracy for domain-specific terms
 - **Cross-platform** — Supports both macOS and Windows
 - **Theme** — Light / dark / system theme preference in settings
+- **Text Polishing** — Post-process ASR output via 8 LLM providers, with multiple prompt templates and per-template hotkey bindings
+- **Recording Feedback** — Real-time audio waveform animation with start sound (recording ready) and end sound (recognition success)
+- **Apple Signed** — macOS builds are signed and notarized with an Apple Developer certificate, no Gatekeeper warnings on install
 
 ## Settings Page
 
@@ -47,6 +50,10 @@ A voice input tool for macOS & Windows — trigger with a hotkey, speak, auto-pa
 
 ![Save Config](docs/screenshots/api-step3.png)
 
+- (Optional) Enable LLM text polishing under "Text Polishing", select a provider, and enter your API Key
+
+![LLM Polishing](docs/screenshots/api-step4.png)
+
 ## Configuration
 
 Edit `config.yaml` in the project root and fill in your credentials:
@@ -63,6 +70,11 @@ Edit `config.yaml` in the project root and fill in your credentials:
 | `connection.secret_key` | Volcengine Secret Key |
 | `connection.resource_id` | ASR Resource ID |
 | `request.context_hotwords` | Custom hotwords list |
+| `llm.enabled` | Enable LLM text polishing |
+| `llm.provider` | LLM provider: deepseek / openai / anthropic / gemini / openrouter / siliconflow / ollama / openai_compatible |
+| `llm.<provider>.url` | Provider API URL (leave empty for built-in providers) |
+| `llm.<provider>.api_key` | Provider API Key |
+| `llm.<provider>.model` | Provider model name |
 
 Get your credentials from [Volcengine Voice Service](https://www.volcengine.com/product/voice-service).
 
