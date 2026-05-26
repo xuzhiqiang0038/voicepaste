@@ -1,6 +1,11 @@
 // --- Sound system (preloaded at startup, async, non-blocking) ---
 const soundPool = {};
 const soundTasks = {};
+const activeSounds = new Set();
+const soundUrls = {
+  start: "./assets/start.mp3",
+  end: "./assets/end.mp3",
+};
 
 function reportSoundIssue(type, payload = {}) {
   window.voiceOverlay.sendDiagnostic({
@@ -15,16 +20,40 @@ function notifySoundPlayed(name) {
   }
 }
 
+function getSoundFallbackMs(audio) {
+  const durationMs = Number.isFinite(audio.duration) ? audio.duration * 1000 : 1200;
+  return Math.max(1600, durationMs + 450);
+}
+
 async function loadSound(name, url) {
   return new Promise((resolve) => {
     const audio = new Audio(url);
+    let settled = false;
+
+    const finish = (ready) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (ready) {
+        soundPool[name] = audio;
+      }
+      resolve(ready);
+    };
+
     audio.preload = "auto";
     audio.volume = 0.72;
     audio.addEventListener(
       "canplaythrough",
       () => {
-        soundPool[name] = audio;
-        resolve(true);
+        finish(true);
+      },
+      { once: true },
+    );
+    audio.addEventListener(
+      "canplay",
+      () => {
+        finish(true);
       },
       { once: true },
     );
@@ -35,41 +64,100 @@ async function loadSound(name, url) {
           name,
           message: audio.error?.message || `media-error-${audio.error?.code || "unknown"}`,
         });
-        resolve(false);
+        finish(false);
       },
       { once: true },
     );
     audio.load();
+    setTimeout(() => {
+      finish(audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA);
+    }, 1500);
   });
 }
 
 async function playSound(name) {
+  let fallbackTimer = 0;
+  let didNotify = false;
+  let audio = null;
+
+  const finishEndSound = () => {
+    if (didNotify) {
+      return;
+    }
+    didNotify = true;
+    clearTimeout(fallbackTimer);
+    if (audio) {
+      activeSounds.delete(audio);
+    }
+    notifySoundPlayed(name);
+  };
+
   try {
     if (soundTasks[name]) {
       await soundTasks[name];
     }
-    const template = soundPool[name];
+    const template = soundPool[name] || new Audio(soundUrls[name]);
     if (!template) {
       reportSoundIssue("skip-not-ready", { name });
+      finishEndSound();
       return;
     }
-    const audio = template.cloneNode(true);
+    audio = template.cloneNode(true);
     audio.volume = template.volume;
     audio.currentTime = 0;
+    activeSounds.add(audio);
+    audio.addEventListener(
+      "ended",
+      () => {
+        activeSounds.delete(audio);
+      },
+      { once: true },
+    );
+    audio.addEventListener(
+      "error",
+      () => {
+        activeSounds.delete(audio);
+      },
+      { once: true },
+    );
+    if (name === "end") {
+      audio.addEventListener(
+        "ended",
+        () => {
+          finishEndSound();
+        },
+        { once: true },
+      );
+      audio.addEventListener(
+        "error",
+        () => {
+          finishEndSound();
+        },
+        { once: true },
+      );
+    }
     await audio.play();
     reportSoundIssue("play-started", { name });
-    notifySoundPlayed(name);
+    if (name !== "end") {
+      notifySoundPlayed(name);
+    } else {
+      fallbackTimer = setTimeout(finishEndSound, getSoundFallbackMs(audio));
+    }
   } catch (error) {
+    if (audio) {
+      activeSounds.delete(audio);
+    }
     reportSoundIssue("play-failed", {
       name,
       message: error.message || String(error),
     });
+    finishEndSound();
   }
 }
 
 function initSounds() {
-  soundTasks.start = loadSound("start", "./assets/start.mp3");
-  soundTasks.end = loadSound("end", "./assets/end.mp3");
+  soundTasks.start = loadSound("start", soundUrls.start);
+  soundTasks.end = loadSound("end", soundUrls.end);
   Promise.all(Object.values(soundTasks)).then((results) => {
     reportSoundIssue("preload-complete", {
       ready: Object.keys(soundPool),
@@ -98,12 +186,13 @@ const state = {
   layoutWidth: 0,
   layoutWrap: false,
   renderedWidth: 0,
-  waveHistory: [0.16, 0.22, 0.28, 0.22, 0.16],
+  waveBarHeights: [],
   smoothedLevel: 0,
 };
 
 const elements = {
-  card: document.getElementById("card"),
+  stage: document.getElementById("stage"),
+  bubble: document.getElementById("bubble"),
   finalText: document.getElementById("finalText"),
   partialText: document.getElementById("partialText"),
   hint: document.getElementById("hint"),
@@ -126,7 +215,8 @@ function startWaveformAnimation() {
 
   const sampleCount = analyser.fftSize;
   const data = new Float32Array(sampleCount);
-  const mirrorCenter = Math.ceil(statusBarItems.length / 2);
+  const centerIndex = (statusBarItems.length - 1) / 2;
+  const maxDistance = Math.max(1, centerIndex);
 
   function tick() {
     analyser.getFloatTimeDomainData(data);
@@ -138,26 +228,19 @@ function startWaveformAnimation() {
       peak = Math.max(peak, Math.abs(sample));
     }
     const rms = Math.sqrt(sumSquares / sampleCount);
-    const boostedLevel = Math.min(1, (rms * 6.2 + peak * 1.4) ** 0.88);
-    state.smoothedLevel += (boostedLevel - state.smoothedLevel) * 0.22;
-    state.waveHistory.push(state.smoothedLevel);
-    while (state.waveHistory.length > mirrorCenter) {
-      state.waveHistory.shift();
-    }
-
-    const leftHeights = state.waveHistory.slice(-mirrorCenter).reverse();
-    const rightHeights = state.waveHistory
-      .slice(-mirrorCenter + (statusBarItems.length % 2 === 0 ? 0 : 1))
-      .slice();
-    const mirrored = leftHeights.concat(rightHeights);
+    const boostedLevel = Math.min(1, (rms * 13 + peak * 2.8) ** 0.82);
+    const targetLevel = boostedLevel < 0.035 ? 0 : boostedLevel;
+    state.smoothedLevel += (targetLevel - state.smoothedLevel) * 0.14;
 
     statusBarItems.forEach((bar, index) => {
-      const level = mirrored[index] ?? state.smoothedLevel;
-      const distance = Math.abs(index - (statusBarItems.length - 1) / 2);
-      const edgeWeight = 0.72 + (1 - distance / mirrorCenter) * 0.34;
-      const height = Math.max(4, Math.min(16, 4 + level * edgeWeight * 15));
-      bar.style.height = `${height}px`;
-      bar.style.transform = `scaleY(${0.92 + level * 0.18})`;
+      const distance = Math.abs(index - centerIndex);
+      const centerWeight = 0.22 + (1 - distance / maxDistance) ** 1.7 * 0.78;
+      const targetHeight = 3 + state.smoothedLevel * centerWeight * 20;
+      const currentHeight = state.waveBarHeights[index] ?? targetHeight;
+      const height = currentHeight + (targetHeight - currentHeight) * 0.18;
+      state.waveBarHeights[index] = height;
+      bar.style.height = `${Math.round(Math.max(3, Math.min(18, height)))}px`;
+      bar.style.transform = "scaleY(1)";
     });
     elements.statusBars.dataset.active = "true";
     waveformRaf = requestAnimationFrame(tick);
@@ -178,30 +261,27 @@ function stopWaveformAnimation() {
     bar.style.height = "";
     bar.style.transform = "";
   });
-  state.waveHistory = [0.16, 0.22, 0.28, 0.22, 0.16];
+  state.waveBarHeights = [];
   state.smoothedLevel = 0;
 }
 
 function getVisibleHintText() {
-  if (!state.hintText) {
-    return "";
+  const visualState =
+    state.appState === "recording" && !state.audioReady ? "connecting" : state.appState;
+
+  if (visualState === "connecting") {
+    return "Preparing";
   }
-  return state.hintVariant === "progress" ? "Thinking" : state.hintText;
+
+  if (visualState === "finishing" && state.hintVariant === "progress") {
+    return "Thinking";
+  }
+
+  return state.hintText || "";
 }
 
 function shouldShowHint() {
-  return Boolean(state.hintText);
-}
-
-function getHintMeasureWidth() {
-  if (!shouldShowHint()) {
-    return 0;
-  }
-  if (state.hintVariant === "progress") {
-    return 148;
-  }
-  elements.measureText.textContent = getVisibleHintText();
-  return Math.ceil(elements.measureText.getBoundingClientRect().width) + 12;
+  return Boolean(getVisibleHintText());
 }
 
 let resizeRaf = 0;
@@ -213,30 +293,45 @@ function scheduleResize() {
 
   resizeRaf = requestAnimationFrame(() => {
     const hasText = Boolean(state.finalText || state.partialText);
-    const hintWidth = getHintMeasureWidth();
-    const hasHint = hintWidth > 0;
+    const hintText = getVisibleHintText();
+    const hasHint = Boolean(hintText);
+    const shouldMeasureHintOnly = hasHint;
 
     if (!hasText && !hasHint) {
-      elements.card.style.width = "";
+      elements.bubble.style.width = "";
       state.renderedWidth = 0;
-      elements.card.dataset.wrap = "single";
+      elements.bubble.dataset.wrap = "single";
       return;
     }
 
     let measuredWidth = 0;
-    if (hasText) {
+    if (hasText && !shouldMeasureHintOnly) {
       const visibleText = `${state.finalText}${state.partialText}`.trim();
       elements.measureText.textContent = visibleText;
       measuredWidth = Math.ceil(elements.measureText.getBoundingClientRect().width);
     }
-    const chromeWidth = 92;
-    const singleLineLimit = 560;
-    const lockLayout = state.appState === "recording" || state.appState === "finishing";
-    const shouldWrap = state.layoutWrap || measuredWidth > singleLineLimit;
-    const contentWidth = shouldWrap
-      ? 420
-      : Math.min(singleLineLimit, Math.max(120, Math.max(measuredWidth + 20, hintWidth)));
-    const nextWidth = shouldWrap ? 560 : chromeWidth + contentWidth;
+
+    let hintWidth = 0;
+    if (hasHint) {
+      elements.measureText.textContent = hintText;
+      hintWidth = Math.ceil(elements.measureText.getBoundingClientRect().width);
+    }
+
+    const horizontalPadding = 16;
+    const borderWidth = 2;
+    const singleLineLimit = 520;
+    const multiLineWidth = 520;
+    const lockLayout =
+      !shouldMeasureHintOnly && (state.appState === "recording" || state.appState === "finishing");
+    const shouldWrap =
+      !shouldMeasureHintOnly && (state.layoutWrap || measuredWidth > singleLineLimit);
+    const textWidth = Math.max(measuredWidth, hintWidth);
+    const nextWidth = shouldWrap
+      ? multiLineWidth + horizontalPadding + borderWidth
+      : Math.min(
+          singleLineLimit + horizontalPadding + borderWidth,
+          Math.max(116, textWidth + horizontalPadding + borderWidth),
+        );
 
     if (!lockLayout) {
       state.layoutWidth = nextWidth;
@@ -246,7 +341,7 @@ function scheduleResize() {
       state.layoutWrap = state.layoutWrap || shouldWrap;
     }
 
-    elements.card.dataset.wrap = state.layoutWrap ? "multi" : "single";
+    elements.bubble.dataset.wrap = state.layoutWrap ? "multi" : "single";
 
     const width = state.layoutWidth || nextWidth;
 
@@ -255,33 +350,43 @@ function scheduleResize() {
     }
 
     state.renderedWidth = width;
-    elements.card.style.width = `${width}px`;
+    elements.bubble.style.width = `${width}px`;
+  });
+}
+
+function scrollTranscriptToBottom() {
+  requestAnimationFrame(() => {
+    elements.transcript.scrollTop = elements.transcript.scrollHeight;
   });
 }
 
 function updateView() {
   const visualState =
     state.appState === "recording" && !state.audioReady ? "connecting" : state.appState;
-  const isThinking = visualState === "finishing" && state.hintVariant === "progress";
-  const isWaveOnly =
-    !isThinking &&
-    !state.finalText &&
-    !state.partialText &&
-    !state.hintText &&
-    (visualState === "recording" || visualState === "connecting");
-  elements.card.dataset.state = visualState;
-  elements.card.dataset.mode = isWaveOnly ? "wave-only" : "default";
-  elements.finalText.textContent = isThinking ? "" : state.finalText;
-  elements.partialText.textContent = isThinking ? "" : state.partialText;
+  const hintText = getVisibleHintText();
+  const hasHint = Boolean(hintText);
+  const showTranscript = !hasHint;
+  const showWaveform = visualState === "recording" && !hasHint;
+
+  elements.stage.dataset.state = visualState;
+  elements.stage.dataset.mode = hasHint ? "hint" : "transcript";
+  elements.finalText.textContent = showTranscript ? state.finalText : "";
+  elements.partialText.textContent = showTranscript ? state.partialText : "";
+  if (showTranscript) {
+    scrollTranscriptToBottom();
+  }
   elements.hintLabel.textContent = getVisibleHintText();
   elements.hint.dataset.visible = shouldShowHint() ? "true" : "false";
   elements.hint.dataset.level = state.hintLevel;
-  elements.hint.dataset.variant = state.hintVariant;
+  elements.hint.dataset.variant =
+    visualState === "connecting" ||
+    (visualState === "finishing" && state.hintVariant === "progress")
+      ? "progress"
+      : state.hintVariant;
   if (elements.statusBars) {
-    elements.statusBars.dataset.active =
-      isThinking || visualState === "idle" || visualState === "connecting"
-        ? "false"
-        : elements.statusBars.dataset.active;
+    elements.statusBars.dataset.active = showWaveform
+      ? elements.statusBars.dataset.active
+      : "false";
   }
   scheduleResize();
 }
@@ -296,7 +401,7 @@ function resetState() {
   state.layoutWidth = 0;
   state.layoutWrap = false;
   state.renderedWidth = 0;
-  elements.card.style.width = "";
+  elements.bubble.style.width = "";
   updateView();
 }
 

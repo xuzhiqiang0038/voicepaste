@@ -12,6 +12,7 @@ const lucide = require(path.join(
 ));
 
 const ICONS = [
+  "Home",
   "Keyboard",
   "Settings2",
   "ShieldCheck",

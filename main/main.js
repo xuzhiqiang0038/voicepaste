@@ -46,6 +46,7 @@ const ESC_HOTKEY = "Esc";
 const DEBOUNCE_MS = 200;
 const STALE_KEY_MS = 5000;
 const HOLD_TRIGGER_DELAY_MS = 300;
+const ERROR_OVERLAY_MS = 2000;
 
 const pressedKeys = new Map();
 
@@ -561,7 +562,7 @@ function waitForRendererAudioStop(timeoutMs = 1200) {
   });
 }
 
-function waitForRendererSoundPlayed(timeoutMs = 350) {
+function waitForRendererSoundPlayed(timeoutMs = 2600) {
   return new Promise((resolve) => {
     let settled = false;
 
@@ -646,7 +647,7 @@ async function startRecordingFlow() {
             setState("idle");
             hideOverlay();
           }
-        }, 1400);
+        }, ERROR_OVERLAY_MS);
       },
       onClose: ({ code, reason }) => {
         asrSession = null;
@@ -670,7 +671,7 @@ async function startRecordingFlow() {
               setState("idle");
               hideOverlay();
             }
-          }, 1400);
+          }, ERROR_OVERLAY_MS);
         }
       },
     });
@@ -703,7 +704,7 @@ async function startRecordingFlow() {
           setState("idle");
           hideOverlay();
         }
-      }, 1400);
+      }, ERROR_OVERLAY_MS);
     }
   }
 }
@@ -795,8 +796,9 @@ async function finishRecordingFlow() {
       return;
     }
     await cleanupSession();
+    const soundPlayed = waitForRendererSoundPlayed();
     sendOverlayMessage("paste:done");
-    await waitForRendererSoundPlayed();
+    await soundPlayed;
     resetTranscript();
     hideOverlay();
     setState("idle");
@@ -811,7 +813,7 @@ async function finishRecordingFlow() {
     });
     await cleanupSession();
     setState("idle");
-    setTimeout(() => hideOverlay(), 1200);
+    setTimeout(() => hideOverlay(), ERROR_OVERLAY_MS);
   }
 }
 
@@ -1296,7 +1298,7 @@ app.whenReady().then(() => {
         setState("idle");
         hideOverlay();
       }
-    }, 1400);
+    }, ERROR_OVERLAY_MS);
   });
 
   app.on("activate", () => {

@@ -13,9 +13,7 @@
 html,
 body {
   height: 100%;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei",
-    system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-size: 13.5px;
   line-height: 1.5;
   color: var(--text);

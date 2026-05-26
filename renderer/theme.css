@@ -3,6 +3,10 @@
 :root {
   color-scheme: dark;
 
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", Arial, system-ui, sans-serif;
+
   --bg: #141413;
   --surface: #1c1c1a;
   --surface-hover: #262624;

@@ -3,15 +3,18 @@
 :root {
   color-scheme: dark;
 
-  --bg: var(--overlay-bg);
-  --border: rgba(250, 249, 245, 0.08);
-  --text: var(--overlay-text);
-  --muted: var(--overlay-muted);
-  --soft: var(--overlay-soft);
-
-  --idle: var(--error);
-  --recording: var(--success);
-  --connecting: var(--warning);
+  --bubble-bg: rgba(18, 18, 18, 0.68);
+  --bubble-border: #8e8e93;
+  --text: #ffffff;
+  --partial-text: rgba(255, 255, 255, 0.58);
+  --progress: rgba(255, 255, 255, 0.3);
+  --progress-soft: rgba(255, 255, 255, 0.1);
+  --waveform: #358c0c;
+  --overlay-padding: 6px;
+  --stage-gap: 8px;
+  --waveform-slot-height: 24px;
+  --bubble-padding-y: 8px;
+  --bubble-border-width: 1px;
 }
 
 * {
@@ -24,8 +27,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-ui);
   background: transparent;
   color: var(--text);
 }
@@ -33,70 +35,98 @@ body {
 .overlay {
   width: 100%;
   height: 100%;
-  padding: 6px;
+  padding: var(--overlay-padding);
   display: flex;
   justify-content: center;
   align-items: flex-end;
   overflow: hidden;
 }
 
-.card {
-  min-height: 56px;
-  border: 1px solid var(--border);
-  background: var(--overlay-card);
-  border-radius: 56px;
-  padding: 10px;
+.stage {
+  width: 100%;
+  max-width: 680px;
+  max-height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, auto) var(--waveform-slot-height);
+  justify-items: center;
+  align-items: end;
+  gap: var(--stage-gap);
+  overflow: visible;
+}
+
+.bubble {
+  position: relative;
+  min-width: 116px;
+  max-width: 100%;
+  max-height: calc(
+    100vh -
+    var(--overlay-padding) *
+    2 -
+    var(--stage-gap) -
+    var(--waveform-slot-height)
+  );
+  min-height: 40px;
+  border: var(--bubble-border-width) solid var(--bubble-border);
+  border-radius: 16px;
+  background: var(--bubble-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 28px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  padding: var(--bubble-padding-y) 8px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: 100%;
+  justify-content: center;
   overflow: hidden;
   transition:
     width 0.15s ease-out,
-    border-radius 0.2s ease-out;
+    border-radius 0.18s ease-out;
 }
 
-.card[data-mode="wave-only"] {
-  justify-content: center;
-  padding: 14px 22px;
-  min-height: 52px;
-  min-width: 92px;
-}
-
-.card[data-wrap="multi"] {
-  border-radius: 30px;
-  overflow: visible;
-}
-
-.content {
-  min-width: 0px;
-  max-width: 620px;
-  display: grid;
-  gap: 4px;
-  align-content: center;
-  flex: 1 1 auto;
-  overflow: visible;
-}
-
-.card[data-mode="wave-only"] .content {
-  display: none;
+.bubble[data-wrap="multi"] {
+  border-radius: 16px;
+  align-items: flex-end;
 }
 
 .transcript {
   display: block;
-  min-height: 18px;
-  font-size: 15px;
-  line-height: 1.45;
+  width: 100%;
+  max-height: calc(
+    100vh -
+    var(--overlay-padding) *
+    2 -
+    var(--stage-gap) -
+    var(--waveform-slot-height) -
+    var(--bubble-padding-y) *
+    2 -
+    var(--bubble-border-width) *
+    2
+  );
+  min-height: 20px;
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 500;
   letter-spacing: 0;
+  text-align: center;
+  white-space: nowrap;
   word-break: break-word;
   overflow-wrap: anywhere;
-  white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.card[data-wrap="multi"] .transcript {
+.bubble[data-wrap="multi"] .transcript {
   white-space: normal;
-  overflow: visible;
+  overflow: hidden auto;
+  text-overflow: clip;
+  text-align: left;
+  scrollbar-width: none;
+}
+
+.bubble[data-wrap="multi"] .transcript::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .final-text {
@@ -104,44 +134,39 @@ body {
 }
 
 .partial-text {
-  color: var(--soft);
+  color: var(--partial-text);
 }
 
 .hint {
   display: none;
+  position: absolute;
+  inset: 0;
   align-items: center;
-  width: fit-content;
-  max-width: 100%;
-  font-size: 11px;
-  line-height: 1.2;
-  color: var(--muted);
-  opacity: 0.96;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  padding: var(--bubble-padding-y) 8px;
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-align: center;
+  color: var(--text);
+  overflow: hidden;
 }
 
 .hint[data-visible="true"] {
-  display: inline-flex;
+  display: flex;
 }
 
-.hint[data-variant="text"] {
-  padding: 0;
-}
-
-.hint[data-variant="progress"] {
-  position: relative;
-  min-width: 0;
-  overflow: hidden;
-  border-radius: inherit;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: rgba(250, 249, 245, 0.88);
+.stage[data-mode="hint"] .transcript {
+  visibility: hidden;
 }
 
 .hint-label {
   position: relative;
   z-index: 1;
   width: 100%;
-  text-align: center;
 }
 
 .hint-progress {
@@ -152,118 +177,61 @@ body {
   display: block;
   position: absolute;
   inset: 0;
-  border-radius: inherit;
   overflow: hidden;
 }
 
 .hint-progress-bar {
   position: absolute;
-  inset: 0 auto 0 -38%;
-  width: 38%;
+  inset: 0 auto 0 -45%;
+  width: 45%;
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.08) 18%,
-    rgba(255, 255, 255, 0.28) 48%,
+    transparent 0%,
+    var(--progress-soft) 18%,
+    var(--progress) 48%,
     rgba(255, 255, 255, 0.42) 62%,
-    rgba(255, 255, 255, 0.12) 82%,
-    rgba(255, 255, 255, 0) 100%
+    var(--progress-soft) 82%,
+    transparent 100%
   );
-  animation: thinking-slide 1.15s linear infinite;
+  animation: progress-slide 1.18s linear infinite;
 }
 
-.status-pill {
-  flex: 0 0 auto;
-  align-self: center;
-  height: 24px;
-  width: auto;
+.waveform-slot {
+  height: var(--waveform-slot-height);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  gap: 0;
 }
 
 .status-bars {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   height: 18px;
-  padding: 0 6px;
+  opacity: 0;
+  transform: translateY(0);
+  transition: opacity 0.12s ease-out;
 }
 
-.status-bar {
-  width: 2.5px;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--recording);
-  opacity: 0.78;
-  transform-origin: center center;
-  transition:
-    height 0.11s ease-out,
-    opacity 0.11s ease-out,
-    transform 0.11s ease-out;
-}
-
-.status-bars[data-active="false"] .status-bar {
-  background: var(--overlay-bar);
-}
-
-.status-bars[data-active="true"] .status-bar {
+.stage[data-state="recording"] .status-bars[data-active="true"] {
   opacity: 1;
 }
 
-.card[data-state="finishing"] {
-  align-items: stretch;
-  min-height: 56px;
-  padding: 0;
+.status-bar {
+  width: 3px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--waveform);
+  opacity: 1;
+  transform-origin: center center;
+  transition:
+    height 0.16s ease-out,
+    transform 0.16s ease-out;
 }
 
-.card[data-state="finishing"] .status-pill,
-.card[data-state="finishing"] .transcript {
+.stage[data-mode="transcript"] .hint {
   display: none;
-}
-
-.card[data-state="finishing"] .content {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: stretch;
-  justify-content: stretch;
-  align-self: stretch;
-  width: 100%;
-  height: 100%;
-  max-width: none;
-}
-
-.card[data-state="finishing"] .hint[data-variant="progress"] {
-  display: flex;
-  flex: 1 1 auto;
-  width: 100%;
-  height: 100%;
-  align-self: stretch;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  padding: 0 24px;
-  font-size: 18px;
-  line-height: 1;
-  border-radius: inherit;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.card[data-state="finishing"] .hint-label {
-  font-weight: 520;
-}
-
-.hint[data-level="success"] {
-  color: var(--success);
-}
-
-.hint[data-level="warning"] {
-  color: var(--warning);
-}
-
-.hint[data-level="error"] {
-  color: var(--error);
 }
 
 .measure-text {
@@ -272,21 +240,21 @@ body {
   top: -9999px;
   visibility: hidden;
   pointer-events: none;
-  white-space: pre-wrap;
-  max-width: 620px;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 15px;
-  line-height: 1.45;
+  white-space: nowrap;
+  max-width: none;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.35;
   font-weight: 500;
+  letter-spacing: 0;
 }
 
-@keyframes thinking-slide {
+@keyframes progress-slide {
   0% {
     transform: translateX(0%);
   }
 
   100% {
-    transform: translateX(395%);
+    transform: translateX(322%);
   }
 }
