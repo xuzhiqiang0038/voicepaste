@@ -442,26 +442,50 @@ body {
 .hotkey-display {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
+  gap: 5px;
+  min-height: 34px;
+  padding: 5px 9px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-family: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
-  font-size: 12.5px;
   color: var(--text);
-  letter-spacing: 0.02em;
+  flex-wrap: wrap;
 }
 
 kbd {
-  display: inline-block;
-  padding: 1px 5px;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 3px;
-  font-family: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
-  font-size: 11px;
-  line-height: 1.4;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Symbol", "Apple Symbols", sans-serif;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.hotkey-side {
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0.55;
+  align-self: flex-start;
+  padding-top: 1px;
+}
+
+.hotkey-symbol {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Symbol", "Apple Symbols", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .hotkey-display.is-recording {
@@ -503,6 +527,52 @@ kbd {
 
 .prompt-config-card {
   padding: 0;
+}
+
+.hotkey-section-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.hotkey-section {
+  display: grid;
+  gap: 6px;
+}
+
+.hotkey-section-title {
+  padding: 0 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.section > .hotkey-section-title + .section-card {
+  margin-top: 6px;
+}
+
+.provider-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.provider-chip {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.provider-chip.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .prompt-add-btn {
@@ -549,6 +619,15 @@ kbd {
 
 .prompt-item-title {
   padding-bottom: 10px;
+}
+
+.prompt-hotkey-display {
+  cursor: pointer;
+}
+
+.prompt-hotkey-display .empty {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .prompt-item-delete {

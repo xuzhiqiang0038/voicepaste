@@ -51,8 +51,36 @@ request:
 
 llm:
   enabled: false              # 启用 LLM 文本润色
-  url: ""                     # OpenAI 兼容 API 地址，如 https://api.openai.com/v1/chat/completions
-  api_key: ""                 # API Key（Bearer Token）
-  model: ""                   # 模型名称，如 gpt-4o-mini
-  prompt_id: "prompt-1"       # 当前生效的提示词 ID，对应 prompts.json 里的 id
-                              # 提示词配置见 prompts.json（与 config.yaml 同目录）
+  provider: deepseek          # deepseek / openai / anthropic / gemini / openrouter / siliconflow / ollama / openai_compatible
+  deepseek:
+    url: ""                   # 内置默认地址，可留空
+    api_key: ""
+    model: deepseek-v4-flash
+  openai:
+    url: ""                   # 内置默认地址，可留空
+    api_key: ""
+    model: gpt-4o-mini
+  anthropic:
+    url: ""                   # Anthropic 原生协议可留空
+    api_key: ""
+    model: claude-3-5-haiku-latest
+  gemini:
+    url: ""                   # 内置默认地址，可留空
+    api_key: ""
+    model: gemini-2.5-flash-lite
+  openrouter:
+    url: https://openrouter.ai/api/v1
+    api_key: ""
+    model: openai/gpt-4o-mini
+  siliconflow:
+    url: https://api.siliconflow.cn/v1
+    api_key: ""
+    model: deepseek-ai/DeepSeek-V3
+  ollama:
+    url: http://localhost:11434/api
+    api_key: ""
+    model: llama3.1
+  openai_compatible:
+    url: ""
+    api_key: ""
+    model: ""

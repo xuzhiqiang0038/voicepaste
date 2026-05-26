@@ -41,8 +41,16 @@
     "electron-builder": "^26.0.12"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.79",
+    "@ai-sdk/deepseek": "^2.0.35",
+    "@ai-sdk/google": "^3.0.79",
+    "@ai-sdk/openai": "^3.0.65",
+    "@ai-sdk/openai-compatible": "^2.0.48",
+    "ai": "^6.0.191",
     "electron-updater": "^6.8.3",
+    "eventsource-parser": "^3.0.8",
     "lucide": "^1.14.0",
+    "ollama-ai-provider-v2": "^3.5.1",
     "uiohook-napi": "^1.5.0",
     "ws": "^8.20.0",
     "yaml": "^2.8.3"

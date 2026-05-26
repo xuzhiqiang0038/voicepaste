@@ -182,6 +182,7 @@
                 <div class="section-subtitle">设置语音输入的触发方式</div>
               </div>
             </div>
+            <div class="hotkey-section-title">默认（无文本润色）</div>
             <div class="section-card">
               <div class="row">
                 <div class="row-label">
@@ -192,7 +193,9 @@
                   <div class="desc">按下快捷键开始/结束语音输入</div>
                 </div>
                 <div class="hotkey-display" id="hotkeyDisplay">
-                  <kbd>⌘</kbd><kbd>⇧</kbd><kbd>V</kbd>
+                  <kbd><span class="hotkey-symbol">⌘</span></kbd
+                  ><kbd><span class="hotkey-symbol">⇧</span></kbd
+                  ><kbd>V</kbd>
                 </div>
                 <button type="button" class="btn btn-sm" id="hotkeyRecordBtn">
                   <span class="nav-icon" data-icon="keyboard"></span> 录制
@@ -221,6 +224,7 @@
                 <div class="hint-text" id="hotkeyHint"></div>
               </div>
             </div>
+            <div id="promptHotkeyList" class="hotkey-section-list"></div>
           </section>
 
           <!-- 应用设置 -->
@@ -426,7 +430,7 @@
               <div class="row">
                 <div class="row-label">
                   <div class="title">启用文本润色</div>
-                  <div class="desc">语音识别后自动调用 LLM 整理文本格式</div>
+                  <div class="desc">开启后，润色模板快捷键会调用模型；默认快捷键仍只输出原文</div>
                 </div>
                 <label class="toggle">
                   <input type="checkbox" id="llmEnabled" />
@@ -437,23 +441,62 @@
               <div class="row vertical">
                 <div class="row-label">
                   <div class="title">
-                    API 地址
-                    <span class="dev-path" title="配置路径：llm.url">llm.url</span>
+                    模型厂商
+                    <span class="dev-path" title="配置路径：llm.provider">llm.provider</span>
                   </div>
-                  <div class="desc">OpenAI 兼容的 Chat Completions 接口地址</div>
+                  <div class="desc">选择厂商后会自动填入默认接口和模型，可继续手动修改</div>
+                </div>
+                <div class="provider-grid" id="llmProviderGrid">
+                  <button type="button" class="provider-chip" data-provider="deepseek">
+                    DeepSeek
+                  </button>
+                  <button type="button" class="provider-chip" data-provider="openai">
+                    OpenAI
+                  </button>
+                  <button type="button" class="provider-chip" data-provider="openrouter">
+                    OpenRouter
+                  </button>
+                  <button type="button" class="provider-chip" data-provider="siliconflow">
+                    硅基流动
+                  </button>
+                  <button type="button" class="provider-chip" data-provider="gemini">
+                    Gemini
+                  </button>
+                  <button type="button" class="provider-chip" data-provider="anthropic">
+                    Anthropic
+                  </button>
+                  <button type="button" class="provider-chip" data-provider="ollama">
+                    Ollama 本地
+                  </button>
+                  <button type="button" class="provider-chip" data-provider="openai_compatible">
+                    自定义
+                  </button>
+                </div>
+              </div>
+              <div class="row vertical">
+                <div class="row-label">
+                  <div class="title">
+                    API 地址
+                    <span class="dev-path" title="配置路径：llm.<provider>.url"
+                      >llm.*.url</span
+                    >
+                  </div>
+                  <div class="desc" id="llmBaseUrlDesc">内置厂商可留空；自定义和 Ollama 使用该地址</div>
                 </div>
                 <input
                   type="text"
-                  id="llmUrl"
+                  id="llmBaseUrl"
                   class="input-field mono"
-                  placeholder="https://api.openai.com/v1/chat/completions"
+                  placeholder="https://api.example.com/v1"
                 />
               </div>
               <div class="row vertical">
                 <div class="row-label">
                   <div class="title">
                     API Key
-                    <span class="dev-path" title="配置路径：llm.api_key">llm.api_key</span>
+                    <span class="dev-path" title="配置路径：llm.<provider>.api_key"
+                      >llm.*.api_key</span
+                    >
                   </div>
                 </div>
                 <div class="input-group">
@@ -472,9 +515,11 @@
                 <div class="row-label">
                   <div class="title">
                     模型名称
-                    <span class="dev-path" title="配置路径：llm.model">llm.model</span>
+                    <span class="dev-path" title="配置路径：llm.<provider>.model"
+                      >llm.*.model</span
+                    >
                   </div>
-                  <div class="desc">如 gpt-4o-mini, deepseek-chat 等</div>
+                  <div class="desc" id="llmModelDesc">如 deepseek-chat, gpt-4o-mini 等</div>
                 </div>
                 <input
                   type="text"
@@ -487,11 +532,11 @@
             <div class="section-card prompt-config-card" style="margin-top: 12px">
               <div class="row vertical prompt-config-head">
                 <div class="row-label">
-                  <div class="title">提示词配置</div>
-                  <div class="desc">配置用于文本润色的系统提示词，支持多条，但同一时间只会使用一条</div>
+                  <div class="title">润色模板</div>
+                  <div class="desc">编辑文本润色模板内容；模板快捷键在“快捷键”页面配置</div>
                 </div>
                 <button type="button" class="seg-btn prompt-add-btn" id="addPromptBtn">
-                  + 添加提示词
+                  + 添加模板
                 </button>
               </div>
               <div id="promptsList" class="prompt-list"></div>

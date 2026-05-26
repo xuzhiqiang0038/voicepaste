@@ -5,7 +5,67 @@
   let isDirty = false;
   let currentThemePreference = "system";
   let currentHotkeyMode = "toggle";
+  let currentLlmProvider = "deepseek";
   let hasAutoCheckedUpdates = false;
+
+  const LLM_PROVIDERS = {
+    deepseek: {
+      label: "DeepSeek",
+      model: "deepseek-v4-flash",
+      url: "",
+      baseUrlPlaceholder: "内置 DeepSeek 地址，可留空",
+      modelHint: "如 deepseek-v4-flash",
+    },
+    openai: {
+      label: "OpenAI",
+      model: "gpt-4.1-mini",
+      url: "",
+      baseUrlPlaceholder: "内置 OpenAI 地址，可留空",
+      modelHint: "如 gpt-4.1-mini",
+    },
+    openrouter: {
+      label: "OpenRouter",
+      model: "openai/gpt-4o-mini",
+      url: "https://openrouter.ai/api/v1",
+      baseUrlPlaceholder: "https://openrouter.ai/api/v1",
+      modelHint: "如 openai/gpt-4o-mini",
+    },
+    siliconflow: {
+      label: "硅基流动",
+      model: "deepseek-ai/DeepSeek-V3",
+      url: "https://api.siliconflow.cn/v1",
+      baseUrlPlaceholder: "https://api.siliconflow.cn/v1",
+      modelHint: "如 deepseek-ai/DeepSeek-V3",
+    },
+    gemini: {
+      label: "Gemini",
+      model: "gemini-2.5-flash-lite",
+      url: "",
+      baseUrlPlaceholder: "内置 Gemini 地址，可留空",
+      modelHint: "如 gemini-2.5-flash-lite",
+    },
+    anthropic: {
+      label: "Anthropic",
+      model: "claude-3-5-haiku-latest",
+      url: "",
+      baseUrlPlaceholder: "Anthropic 使用原生协议，可留空",
+      modelHint: "如 claude-3-5-haiku-latest",
+    },
+    ollama: {
+      label: "Ollama 本地",
+      model: "llama3.1",
+      url: "http://localhost:11434/api",
+      baseUrlPlaceholder: "http://localhost:11434/api",
+      modelHint: "如 llama3.1",
+    },
+    openai_compatible: {
+      label: "自定义",
+      model: "",
+      url: "",
+      baseUrlPlaceholder: "https://api.example.com/v1",
+      modelHint: "输入兼容 OpenAI 的模型名称",
+    },
+  };
 
   const $ = (id) => document.getElementById(id);
 
@@ -35,6 +95,7 @@
     hotkeyHint: $("hotkeyHint"),
     hotkeyHintRow: $("hotkeyHintRow"),
     hotkeyModeSelector: $("hotkeyModeSelector"),
+    promptHotkeyList: $("promptHotkeyList"),
     configPath: $("configPath"),
     autoStart: $("autoStart"),
     micDot: $("micDot"),
@@ -78,9 +139,12 @@
     licenseCloseBtn: $("licenseCloseBtn"),
     licenseText: $("licenseText"),
     llmEnabled: $("llmEnabled"),
-    llmUrl: $("llmUrl"),
+    llmProviderGrid: $("llmProviderGrid"),
+    llmBaseUrl: $("llmBaseUrl"),
+    llmBaseUrlDesc: $("llmBaseUrlDesc"),
     llmApiKey: $("llmApiKey"),
     llmModel: $("llmModel"),
+    llmModelDesc: $("llmModelDesc"),
     toggleLlmApiKey: $("toggleLlmApiKey"),
     promptsList: $("promptsList"),
     addPromptBtn: $("addPromptBtn"),
@@ -137,10 +201,15 @@
 
   function renderHotkeyDisplay(displayString) {
     el.hotkeyDisplay.innerHTML = "";
+    renderHotkeyParts(el.hotkeyDisplay, displayString);
+  }
+
+  function renderHotkeyParts(container, displayString) {
+    container.innerHTML = "";
     if (!displayString) {
       const kbd = document.createElement("kbd");
       kbd.textContent = "未设置";
-      el.hotkeyDisplay.appendChild(kbd);
+      container.appendChild(kbd);
       return;
     }
     displayString
@@ -148,10 +217,132 @@
       .map((s) => s.trim())
       .filter(Boolean)
       .forEach((key) => {
-        const kbd = document.createElement("kbd");
-        kbd.textContent = key;
-        el.hotkeyDisplay.appendChild(kbd);
+        container.appendChild(createHotkeyKeycap(key));
       });
+  }
+
+  function createHotkeyKeycap(key) {
+    const kbd = document.createElement("kbd");
+    const normalizedKey = normalizeHotkeyLabel(key);
+    const sideMatch = normalizedKey.match(/^([LR])\s+([⌃⇧⌥⌘])$/);
+
+    if (sideMatch) {
+      const side = document.createElement("span");
+      side.className = "hotkey-side";
+      side.textContent = sideMatch[1];
+      const symbol = document.createElement("span");
+      symbol.className = "hotkey-symbol";
+      symbol.textContent = sideMatch[2];
+      kbd.appendChild(side);
+      kbd.appendChild(symbol);
+      return kbd;
+    }
+
+    if (/^[⌃⇧⌥⌘␣]$/.test(normalizedKey)) {
+      const symbol = document.createElement("span");
+      symbol.className = "hotkey-symbol";
+      symbol.textContent = normalizedKey;
+      kbd.appendChild(symbol);
+      return kbd;
+    }
+
+    kbd.textContent = normalizedKey;
+    return kbd;
+  }
+
+  function normalizeHotkeyLabel(key) {
+    const aliases = {
+      CmdOrCtrl: "⌘",
+      CommandOrControl: "⌘",
+      Command: "⌘",
+      Cmd: "⌘",
+      Meta: "⌘",
+      Control: "⌃",
+      Ctrl: "⌃",
+      Shift: "⇧",
+      Alt: "⌥",
+      Option: "⌥",
+      Space: "␣",
+    };
+    return aliases[key] || key;
+  }
+
+  const keyDisplayNames = {
+    1: "Esc",
+    14: "Backspace",
+    15: "Tab",
+    28: "Enter",
+    29: "L ⌃",
+    42: "L ⇧",
+    54: "R ⇧",
+    56: "L ⌥",
+    57: "␣",
+    3613: "R ⌃",
+    3640: "R ⌥",
+    3675: "L ⌘",
+    3676: "R ⌘",
+  };
+
+  Object.assign(keyDisplayNames, {
+    16: "Q",
+    17: "W",
+    18: "E",
+    19: "R",
+    20: "T",
+    21: "Y",
+    22: "U",
+    23: "I",
+    24: "O",
+    25: "P",
+    30: "A",
+    31: "S",
+    32: "D",
+    33: "F",
+    34: "G",
+    35: "H",
+    36: "J",
+    37: "K",
+    38: "L",
+    44: "Z",
+    45: "X",
+    46: "C",
+    47: "V",
+    48: "B",
+    49: "N",
+    50: "M",
+    59: "F1",
+    60: "F2",
+    61: "F3",
+    62: "F4",
+    63: "F5",
+    64: "F6",
+    65: "F7",
+    66: "F8",
+    67: "F9",
+    68: "F10",
+    87: "F11",
+    88: "F12",
+    91: "F13",
+    92: "F14",
+    93: "F15",
+    99: "F16",
+    100: "F17",
+    101: "F18",
+    102: "F19",
+    103: "F20",
+    104: "F21",
+    105: "F22",
+    106: "F23",
+    107: "F24",
+    57416: "↑",
+    57424: "↓",
+    57419: "←",
+    57421: "→",
+  });
+
+  function formatPromptHotkey(hotkey) {
+    if (!Array.isArray(hotkey) || hotkey.length === 0) return "";
+    return hotkey.map((key) => keyDisplayNames[key] || `Key(${key})`).join(" + ");
   }
 
   function setHotkeyMode(mode) {
@@ -170,6 +361,42 @@
     } else {
       el.hotkeyHint.style.color = "";
     }
+  }
+
+  function setLlmProvider(provider, applyDefaults = false) {
+    if (applyDefaults) {
+      persistVisibleProviderFields();
+    }
+
+    currentLlmProvider = LLM_PROVIDERS[provider] ? provider : "deepseek";
+    const providerConfig = LLM_PROVIDERS[currentLlmProvider];
+    const savedProviderConfig = parsedConfig.llm?.[currentLlmProvider] || {};
+
+    el.llmProviderGrid.querySelectorAll(".provider-chip").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.provider === currentLlmProvider);
+    });
+
+    el.llmBaseUrl.placeholder = providerConfig.baseUrlPlaceholder;
+    el.llmBaseUrlDesc.textContent = providerConfig.baseUrlPlaceholder;
+    el.llmModel.placeholder = providerConfig.model || "模型名称";
+    el.llmModelDesc.textContent = providerConfig.modelHint;
+
+    if (applyDefaults) {
+      el.llmBaseUrl.value = savedProviderConfig.url || providerConfig.url;
+      el.llmApiKey.value = savedProviderConfig.api_key || "";
+      el.llmModel.value = savedProviderConfig.model || providerConfig.model;
+      saveFormNow();
+    }
+  }
+
+  function persistVisibleProviderFields() {
+    parsedConfig.llm = parsedConfig.llm || {};
+    parsedConfig.llm[currentLlmProvider] = {
+      ...(parsedConfig.llm[currentLlmProvider] || {}),
+      url: el.llmBaseUrl?.value?.trim() || "",
+      api_key: el.llmApiKey?.value?.trim() || "",
+      model: el.llmModel?.value?.trim() || "",
+    };
   }
 
   // ===== Config load/save =====
@@ -268,15 +495,18 @@
     el.secretKey.value = c.connection?.secret_key || "";
 
     el.llmEnabled.checked = Boolean(c.llm?.enabled);
-    el.llmUrl.value = c.llm?.url || "";
-    el.llmApiKey.value = c.llm?.api_key || "";
-    el.llmModel.value = c.llm?.model || "";
-    activePromptId = c.llm?.prompt_id || "";
+    setLlmProvider(c.llm?.provider || (c.llm?.url ? "openai_compatible" : "deepseek"));
+    const activeProviderConfig = c.llm?.[currentLlmProvider] || {};
+    const activeProviderDefault = LLM_PROVIDERS[currentLlmProvider];
+    el.llmBaseUrl.value = activeProviderConfig.url || c.llm?.base_url || c.llm?.url || "";
+    el.llmApiKey.value = activeProviderConfig.api_key || c.llm?.api_key || "";
+    el.llmModel.value = activeProviderConfig.model || c.llm?.model || activeProviderDefault.model;
 
     loadAndRenderPrompts();
   }
 
   function collectConfig() {
+    persistVisibleProviderFields();
     const config = JSON.parse(JSON.stringify(parsedConfig));
 
     config.app = config.app || {};
@@ -314,10 +544,12 @@
 
     config.llm = config.llm || {};
     config.llm.enabled = el.llmEnabled.checked;
-    config.llm.url = el.llmUrl.value.trim();
-    config.llm.api_key = el.llmApiKey.value.trim();
-    config.llm.model = el.llmModel.value.trim();
-    config.llm.prompt_id = getEffectivePromptId();
+    config.llm.provider = currentLlmProvider;
+    delete config.llm.base_url;
+    delete config.llm.url;
+    delete config.llm.api_key;
+    delete config.llm.model;
+    delete config.llm.prompt_id;
 
     return config;
   }
@@ -950,7 +1182,12 @@ SOFTWARE.`;
 
   // LLM fields
   el.llmEnabled.addEventListener("change", saveFormNow);
-  el.llmUrl.addEventListener("input", autoSaveForm);
+  el.llmProviderGrid.addEventListener("click", (e) => {
+    const btn = e.target.closest(".provider-chip");
+    if (!btn) return;
+    setLlmProvider(btn.dataset.provider, true);
+  });
+  el.llmBaseUrl.addEventListener("input", autoSaveForm);
   el.llmApiKey.addEventListener("input", autoSaveForm);
   el.llmModel.addEventListener("input", autoSaveForm);
   el.toggleLlmApiKey.addEventListener("click", () => toggleSecret("llmApiKey", el.toggleLlmApiKey));
@@ -958,23 +1195,9 @@ SOFTWARE.`;
   // Prompts
   let promptsData = [];
   let promptsSaveTimer = null;
-  let activePromptId = "";
 
   function createPromptId() {
     return `prompt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  }
-
-  function getEffectivePromptId() {
-    const hasActivePrompt = promptsData.some((item) => item.id === activePromptId);
-    if (hasActivePrompt) {
-      return activePromptId;
-    }
-    const firstPromptWithText = promptsData.find((item) => item.prompt?.trim());
-    return firstPromptWithText?.id || promptsData[0]?.id || "";
-  }
-
-  function syncActivePromptSelection() {
-    activePromptId = getEffectivePromptId();
   }
 
   async function loadAndRenderPrompts() {
@@ -986,73 +1209,50 @@ SOFTWARE.`;
     promptsData = promptsData.map((item, index) => ({
       id: item.id || `prompt-${index + 1}`,
       title: item.title || "",
+      hotkey: Array.isArray(item.hotkey) ? item.hotkey : [],
+      hotkey_mode: item.hotkey_mode === "hold" ? "hold" : "toggle",
       prompt: item.prompt || "",
     }));
-    syncActivePromptSelection();
     renderPrompts();
+    renderPromptHotkeys();
   }
 
   function renderPrompts() {
     if (!el.promptsList) return;
     el.promptsList.innerHTML = "";
-    const effectivePromptId = getEffectivePromptId();
     promptsData.forEach((item, index) => {
       const card = document.createElement("div");
       card.className = "prompt-item";
 
       const actionRow = document.createElement("div");
       actionRow.className = "prompt-item-head";
-      const statusText = document.createElement("div");
-      statusText.className = "prompt-item-status";
-      statusText.textContent = item.id === effectivePromptId ? "当前生效" : "未生效";
-      if (item.id === effectivePromptId) {
-        statusText.classList.add("is-active");
-      }
-      const actions = document.createElement("div");
-      actions.className = "prompt-item-actions";
-      const useBtn = document.createElement("button");
-      useBtn.type = "button";
-      useBtn.className = "seg-btn";
-      useBtn.textContent = item.id === effectivePromptId ? "当前使用中" : "设为当前使用";
-      useBtn.disabled = item.id === effectivePromptId;
-      useBtn.style.cssText = "padding: 3px 10px; font-size: 11px";
-      useBtn.addEventListener("click", async () => {
-        activePromptId = item.id;
-        await savePromptsNow();
-        saveFormNow();
-        renderPrompts();
-      });
-      actions.appendChild(useBtn);
 
       const titleInput = document.createElement("input");
       titleInput.type = "text";
       titleInput.className = "input-field";
       titleInput.placeholder = "提示词标题";
       titleInput.value = item.title || "";
-      titleInput.style.cssText = "width: 100%; font-size: 12.5px";
+      titleInput.style.cssText = "flex: 1; min-width: 0; font-size: 12.5px";
       titleInput.addEventListener("input", () => {
         promptsData[index].title = titleInput.value;
+        renderPromptHotkeys();
         scheduleSavePrompts();
       });
+
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "seg-btn prompt-item-delete";
       delBtn.textContent = "删除";
-      delBtn.style.cssText = "font-size: 11px";
+      delBtn.style.cssText = "font-size: 11px; flex-shrink: 0";
       delBtn.addEventListener("click", async () => {
         promptsData.splice(index, 1);
-        syncActivePromptSelection();
         renderPrompts();
+        renderPromptHotkeys();
         await savePromptsNow();
-        saveFormNow();
       });
-      actions.appendChild(delBtn);
-      actionRow.appendChild(statusText);
-      actionRow.appendChild(actions);
 
-      const titleRow = document.createElement("div");
-      titleRow.className = "prompt-item-title";
-      titleRow.appendChild(titleInput);
+      actionRow.appendChild(titleInput);
+      actionRow.appendChild(delBtn);
 
       const promptArea = document.createElement("textarea");
       promptArea.className = "prompt-item-body";
@@ -1064,10 +1264,125 @@ SOFTWARE.`;
       });
 
       card.appendChild(actionRow);
-      card.appendChild(titleRow);
       card.appendChild(promptArea);
       el.promptsList.appendChild(card);
     });
+  }
+
+  function renderPromptHotkeys() {
+    if (!el.promptHotkeyList) return;
+    el.promptHotkeyList.innerHTML = "";
+
+    promptsData.forEach((item, index) => {
+      const group = document.createElement("div");
+      group.className = "hotkey-section";
+
+      const title = document.createElement("div");
+      title.className = "hotkey-section-title";
+      title.textContent = item.title ? `润色模板：${item.title}` : "润色模板：未命名模板";
+      group.appendChild(title);
+
+      const section = document.createElement("div");
+      section.className = "section-card";
+
+      const hotkeyRow = document.createElement("div");
+      hotkeyRow.className = "row";
+      const hotkeyLabel = document.createElement("div");
+      hotkeyLabel.className = "row-label";
+      hotkeyLabel.innerHTML = `<div class="title">触发快捷键</div><div class="desc">按下后使用「${escapeHtml(item.title || "未命名模板")}」润色</div>`;
+      const hotkeyDisplay = document.createElement("div");
+      hotkeyDisplay.className = "hotkey-display prompt-hotkey-display";
+      const hotkeyText = formatPromptHotkey(item.hotkey);
+      if (hotkeyText) {
+        renderHotkeyParts(hotkeyDisplay, hotkeyText);
+      } else {
+        const empty = document.createElement("span");
+        empty.className = "empty";
+        empty.textContent = "未绑定";
+        hotkeyDisplay.appendChild(empty);
+      }
+      const recordBtn = document.createElement("button");
+      recordBtn.type = "button";
+      recordBtn.className = "btn btn-sm";
+      recordBtn.innerHTML = `<span class="nav-icon">${icon("keyboard")}</span> 录制`;
+      recordBtn.addEventListener("click", async () => {
+        await recordPromptHotkey(index, hotkeyDisplay, recordBtn);
+      });
+      hotkeyDisplay.addEventListener("click", async () => {
+        await recordPromptHotkey(index, hotkeyDisplay, recordBtn);
+      });
+      hotkeyRow.appendChild(hotkeyLabel);
+      hotkeyRow.appendChild(hotkeyDisplay);
+      hotkeyRow.appendChild(recordBtn);
+
+      const modeRow = document.createElement("div");
+      modeRow.className = "row";
+      const modeLabel = document.createElement("div");
+      modeLabel.className = "row-label";
+      modeLabel.innerHTML = `<div class="title">触发模式</div><div class="desc">选择该模板快捷键的触发行为</div>`;
+      const modeSelector = document.createElement("div");
+      modeSelector.className = "seg-control";
+      [
+        ["toggle", "点击切换"],
+        ["hold", "按住说话"],
+      ].forEach(([mode, text]) => {
+        const modeBtn = document.createElement("button");
+        modeBtn.type = "button";
+        modeBtn.className = "seg-btn";
+        modeBtn.textContent = text;
+        modeBtn.classList.toggle("active", item.hotkey_mode === mode);
+        modeBtn.addEventListener("click", async () => {
+          promptsData[index].hotkey_mode = mode;
+          renderPromptHotkeys();
+          await savePromptsNow();
+        });
+        modeSelector.appendChild(modeBtn);
+      });
+      modeRow.appendChild(modeLabel);
+      modeRow.appendChild(modeSelector);
+
+      section.appendChild(hotkeyRow);
+      section.appendChild(modeRow);
+      group.appendChild(section);
+      el.promptHotkeyList.appendChild(group);
+    });
+  }
+
+  async function recordPromptHotkey(index, hotkeyDisplay, recordBtn) {
+    if (isRecordingHotkey) return;
+    isRecordingHotkey = true;
+
+    if (document.activeElement && typeof document.activeElement.blur === "function") {
+      document.activeElement.blur();
+    }
+
+    hotkeyDisplay.classList.add("is-recording");
+    hotkeyDisplay.innerHTML = "";
+    const placeholder = document.createElement("span");
+    placeholder.className = "empty";
+    placeholder.textContent = "正在录制，请按下快捷键组合并松开";
+    hotkeyDisplay.appendChild(placeholder);
+    recordBtn.disabled = true;
+    recordBtn.textContent = "录制中…";
+
+    try {
+      const result = await window.voiceSettings.recordHotkey();
+      const keys = Array.isArray(result) ? result : result?.keys;
+      const displayString = result?.displayString || formatPromptHotkey(keys);
+
+      if (keys && keys.length > 0) {
+        promptsData[index].hotkey = keys;
+        await savePromptsNow();
+        renderPromptHotkeys();
+      } else {
+        renderHotkeyParts(hotkeyDisplay, displayString || "");
+      }
+    } finally {
+      isRecordingHotkey = false;
+      hotkeyDisplay.classList.remove("is-recording");
+      recordBtn.disabled = false;
+      recordBtn.innerHTML = `<span class="nav-icon">${icon("keyboard")}</span> 录制`;
+    }
   }
 
   function scheduleSavePrompts() {
@@ -1086,11 +1401,16 @@ SOFTWARE.`;
   }
 
   el.addPromptBtn.addEventListener("click", async () => {
-    promptsData.push({ id: createPromptId(), title: "", prompt: "" });
-    syncActivePromptSelection();
+    promptsData.push({
+      id: createPromptId(),
+      title: "新建模板",
+      hotkey: [],
+      hotkey_mode: "toggle",
+      prompt: "",
+    });
     renderPrompts();
+    renderPromptHotkeys();
     await savePromptsNow();
-    saveFormNow();
   });
 
   // Hotwords

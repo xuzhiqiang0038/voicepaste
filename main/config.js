@@ -55,23 +55,49 @@ function resolvePromptsPath() {
 
 const PROMPTS_PATH = resolvePromptsPath();
 
+function resolvePromptsExamplePath() {
+  if (process.resourcesPath) {
+    const p = path.join(process.resourcesPath, "prompts.json.example");
+    if (fs.existsSync(p)) return p;
+  }
+
+  const local = path.join(__dirname, "..", "prompts.json.example");
+  if (fs.existsSync(local)) return local;
+
+  return null;
+}
+
 function normalizePromptItem(item, index) {
   const fallbackId = `prompt-${index + 1}`;
   return {
     id: typeof item?.id === "string" && item.id.trim() ? item.id.trim() : fallbackId,
     title: typeof item?.title === "string" ? item.title : "",
+    hotkey: Array.isArray(item?.hotkey) ? item.hotkey.filter((key) => Number.isFinite(key)) : [],
+    hotkey_mode: item?.hotkey_mode === "hold" ? "hold" : "toggle",
     prompt: typeof item?.prompt === "string" ? item.prompt : "",
   };
 }
 
 function ensurePromptsFile() {
   if (!fs.existsSync(PROMPTS_PATH)) {
-    const examplePath = path.join(__dirname, "..", "prompts.json.example");
-    if (fs.existsSync(examplePath)) {
+    const examplePath = resolvePromptsExamplePath();
+    if (examplePath && fs.existsSync(examplePath)) {
       fs.copyFileSync(examplePath, PROMPTS_PATH);
     } else {
       fs.writeFileSync(PROMPTS_PATH, "[]", "utf8");
     }
+  }
+}
+
+function loadDefaultPrompts() {
+  const examplePath = resolvePromptsExamplePath();
+  if (!examplePath) return [];
+  try {
+    const content = fs.readFileSync(examplePath, "utf8");
+    const parsed = JSON.parse(content);
+    return Array.isArray(parsed) ? parsed.map(normalizePromptItem) : [];
+  } catch {
+    return [];
   }
 }
 
@@ -80,9 +106,18 @@ function loadPrompts() {
   try {
     const content = fs.readFileSync(PROMPTS_PATH, "utf8");
     const parsed = JSON.parse(content);
-    return Array.isArray(parsed) ? parsed.map(normalizePromptItem) : [];
+    const prompts = Array.isArray(parsed) ? parsed.map(normalizePromptItem) : [];
+    const defaults = loadDefaultPrompts();
+    const existingIds = new Set(prompts.map((item) => item.id));
+    const missingDefaults = defaults.filter((item) => !existingIds.has(item.id));
+    if (missingDefaults.length > 0) {
+      const merged = [...prompts, ...missingDefaults];
+      fs.writeFileSync(PROMPTS_PATH, JSON.stringify(merged, null, 2), "utf8");
+      return merged;
+    }
+    return prompts;
   } catch {
-    return [];
+    return loadDefaultPrompts();
   }
 }
 
@@ -175,10 +210,98 @@ function loadConfig() {
     llm: {
       ...(raw.llm || {}),
       enabled: Boolean(raw.llm?.enabled),
-      url: raw.llm?.url || "",
-      api_key: raw.llm?.api_key || "",
-      model: raw.llm?.model || "",
-      prompt_id: raw.llm?.prompt_id || "",
+      provider: raw.llm?.provider || (raw.llm?.url ? "openai_compatible" : "deepseek"),
+      deepseek: {
+        ...(raw.llm?.deepseek || {}),
+        url: raw.llm?.deepseek?.url || (raw.llm?.provider === "deepseek" ? raw.llm?.url : "") || "",
+        api_key:
+          raw.llm?.deepseek?.api_key ||
+          (raw.llm?.provider === "deepseek" ? raw.llm?.api_key : "") ||
+          "",
+        model:
+          raw.llm?.deepseek?.model ||
+          (raw.llm?.provider === "deepseek" ? raw.llm?.model : "") ||
+          "",
+      },
+      openai: {
+        ...(raw.llm?.openai || {}),
+        url: raw.llm?.openai?.url || (raw.llm?.provider === "openai" ? raw.llm?.url : "") || "",
+        api_key:
+          raw.llm?.openai?.api_key ||
+          (raw.llm?.provider === "openai" ? raw.llm?.api_key : "") ||
+          "",
+        model:
+          raw.llm?.openai?.model || (raw.llm?.provider === "openai" ? raw.llm?.model : "") || "",
+      },
+      anthropic: {
+        ...(raw.llm?.anthropic || {}),
+        url:
+          raw.llm?.anthropic?.url || (raw.llm?.provider === "anthropic" ? raw.llm?.url : "") || "",
+        api_key:
+          raw.llm?.anthropic?.api_key ||
+          (raw.llm?.provider === "anthropic" ? raw.llm?.api_key : "") ||
+          "",
+        model:
+          raw.llm?.anthropic?.model ||
+          (raw.llm?.provider === "anthropic" ? raw.llm?.model : "") ||
+          "",
+      },
+      gemini: {
+        ...(raw.llm?.gemini || {}),
+        url: raw.llm?.gemini?.url || (raw.llm?.provider === "gemini" ? raw.llm?.url : "") || "",
+        api_key:
+          raw.llm?.gemini?.api_key ||
+          (raw.llm?.provider === "gemini" ? raw.llm?.api_key : "") ||
+          "",
+        model:
+          raw.llm?.gemini?.model || (raw.llm?.provider === "gemini" ? raw.llm?.model : "") || "",
+      },
+      openrouter: {
+        ...(raw.llm?.openrouter || {}),
+        url:
+          raw.llm?.openrouter?.url ||
+          (raw.llm?.provider === "openrouter" ? raw.llm?.url : "") ||
+          "",
+        api_key:
+          raw.llm?.openrouter?.api_key ||
+          (raw.llm?.provider === "openrouter" ? raw.llm?.api_key : "") ||
+          "",
+        model:
+          raw.llm?.openrouter?.model ||
+          (raw.llm?.provider === "openrouter" ? raw.llm?.model : "") ||
+          "",
+      },
+      siliconflow: {
+        ...(raw.llm?.siliconflow || {}),
+        url:
+          raw.llm?.siliconflow?.url ||
+          (raw.llm?.provider === "siliconflow" ? raw.llm?.url : "") ||
+          "",
+        api_key:
+          raw.llm?.siliconflow?.api_key ||
+          (raw.llm?.provider === "siliconflow" ? raw.llm?.api_key : "") ||
+          "",
+        model:
+          raw.llm?.siliconflow?.model ||
+          (raw.llm?.provider === "siliconflow" ? raw.llm?.model : "") ||
+          "",
+      },
+      ollama: {
+        ...(raw.llm?.ollama || {}),
+        url: raw.llm?.ollama?.url || (raw.llm?.provider === "ollama" ? raw.llm?.url : "") || "",
+        api_key:
+          raw.llm?.ollama?.api_key ||
+          (raw.llm?.provider === "ollama" ? raw.llm?.api_key : "") ||
+          "",
+        model:
+          raw.llm?.ollama?.model || (raw.llm?.provider === "ollama" ? raw.llm?.model : "") || "",
+      },
+      openai_compatible: {
+        ...(raw.llm?.openai_compatible || {}),
+        url: raw.llm?.openai_compatible?.url || raw.llm?.base_url || raw.llm?.url || "",
+        api_key: raw.llm?.openai_compatible?.api_key || raw.llm?.api_key || "",
+        model: raw.llm?.openai_compatible?.model || raw.llm?.model || "",
+      },
     },
   };
 }
