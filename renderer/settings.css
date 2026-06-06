@@ -1603,3 +1603,83 @@ kbd {
   outline: none;
   border-color: var(--border-hover);
 }
+
+/* ===== Overlay Appearance: Preview Panel ===== */
+
+.oa-preview-wrap {
+  margin-bottom: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+.oa-preview-label {
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.oa-preview-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 28px 24px 20px;
+  background: repeating-conic-gradient(var(--fill-subtle) 0% 25%, transparent 0% 50%) 0 0 / 16px 16px;
+  min-height: 120px;
+}
+
+.oa-preview-bubble {
+  max-width: 100%;
+  padding: 8px 14px;
+  word-break: break-word;
+  transition: all 0.12s ease;
+}
+
+.oa-preview-transcript {
+  line-height: 1.35;
+}
+
+.oa-preview-wave {
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 20px;
+}
+
+.oa-preview-bar {
+  display: inline-block;
+  width: 3px;
+  border-radius: 999px;
+  opacity: 0.85;
+}
+
+/* Overlay appearance: sticky preview panel */
+.oa-preview-sticky {
+  position: sticky;
+  top: 16px;
+  z-index: 10;
+  background: var(--bg);
+  padding-bottom: 16px;
+}
+
+
+/* Overlay appearance: breathing room between rows and cards */
+#section-overlay-appearance .section-card {
+  margin-bottom: 12px;
+}
+
+#section-overlay-appearance .section-card .row {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+#section-overlay-appearance .card-section-title {
+  padding: 16px 18px 8px;
+}

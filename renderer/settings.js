@@ -1702,6 +1702,67 @@ SOFTWARE.`;
     return "#000000";
   }
 
+  function hexToRgbParts(hex) {
+    const n = normalizeHex(hex);
+    return [
+      Number.parseInt(n.slice(1, 3), 16),
+      Number.parseInt(n.slice(3, 5), 16),
+      Number.parseInt(n.slice(5, 7), 16),
+    ];
+  }
+
+  function updatePreview(appearance) {
+    const bubble = document.getElementById("previewBubble");
+    const finalText = document.getElementById("previewFinalText");
+    const partialText = document.getElementById("previewPartialText");
+    const wave = document.getElementById("previewWave");
+    if (!bubble) return;
+
+    const o = { ...OVERLAY_DEFAULTS, ...(appearance || {}) };
+
+    // Background
+    const [br, bg, bb] = hexToRgbParts(o.background_color);
+    bubble.style.background = `rgba(${br}, ${bg}, ${bb}, ${o.background_opacity})`;
+
+    // Border
+    if (Number(o.border_width) > 0) {
+      bubble.style.border = `${o.border_width}px solid ${o.border_color}`;
+    } else {
+      bubble.style.border = "none";
+    }
+    bubble.style.borderRadius = `${o.border_radius}px`;
+
+    // Max width (cap at preview container width)
+    bubble.style.maxWidth = `min(${o.max_width}px, 100%)`;
+
+    // Font
+    const fontFamily = o.font_family
+      ? `${o.font_family}, -apple-system, "Microsoft YaHei", sans-serif`
+      : '-apple-system, BlinkMacSystemFont, "Microsoft YaHei UI", "Microsoft YaHei", sans-serif';
+
+    for (const span of [finalText, partialText]) {
+      if (span) {
+        span.style.fontFamily = fontFamily;
+        span.style.fontSize = `${o.font_size}px`;
+        span.style.fontWeight = o.font_weight;
+      }
+    }
+
+    // Text colors
+    if (finalText) finalText.style.color = o.text_color;
+    if (partialText) {
+      const [pr, pg, pb] = hexToRgbParts(o.partial_text_color);
+      partialText.style.color = `rgba(${pr}, ${pg}, ${pb}, ${o.partial_text_opacity})`;
+    }
+
+    // Waveform
+    if (wave) {
+      for (const bar of wave.querySelectorAll(".oa-preview-bar")) {
+        bar.style.background = o.waveform_color;
+      }
+    }
+  }
+
   function readOverlayForm() {
     return {
       background_color: oaEl("oa-background-color")?.value || OVERLAY_DEFAULTS.background_color,
@@ -1761,6 +1822,8 @@ SOFTWARE.`;
 
     setColorField("oa-waveform-color", o.waveform_color);
     setSliderField("oa-max-width", o.max_width, "px");
+
+    updatePreview(o);
   }
 
   async function saveOverlayAppearance(appearance) {
@@ -1773,6 +1836,7 @@ SOFTWARE.`;
 
   function onOverlayFieldChange() {
     const appearance = readOverlayForm();
+    updatePreview(appearance);
     window.voiceSettings.updateAppearance(appearance).catch(() => {});
     if (_oaDebounceTimer) clearTimeout(_oaDebounceTimer);
     _oaDebounceTimer = setTimeout(() => {
