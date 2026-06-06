@@ -6,6 +6,13 @@ const soundUrls = {
   start: "./assets/start.mp3",
   end: "./assets/end.mp3",
 };
+const SOUND_DEFAULTS = {
+  enabled: true,
+  start: true,
+  end: true,
+  volume: 0.72,
+};
+let soundConfig = { ...SOUND_DEFAULTS };
 
 function reportSoundIssue(type, payload = {}) {
   window.voiceOverlay.sendDiagnostic({
@@ -14,15 +21,27 @@ function reportSoundIssue(type, payload = {}) {
   });
 }
 
-function notifySoundPlayed(name) {
-  if (name === "end") {
-    window.voiceOverlay.notifySoundPlayed(name);
-  }
-}
-
 function getSoundFallbackMs(audio) {
   const durationMs = Number.isFinite(audio.duration) ? audio.duration * 1000 : 1200;
   return Math.max(1600, durationMs + 450);
+}
+
+function normalizeSoundConfig(config) {
+  const source = config && typeof config === "object" ? config : {};
+  const volume = Number(source.volume);
+  return {
+    enabled: source.enabled !== false,
+    start: source.start !== false,
+    end: source.end !== false,
+    volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : SOUND_DEFAULTS.volume,
+  };
+}
+
+function shouldPlaySound(name) {
+  if (!soundConfig.enabled) return false;
+  if (name === "start") return soundConfig.start !== false;
+  if (name === "end") return soundConfig.end !== false;
+  return true;
 }
 
 async function loadSound(name, url) {
@@ -76,6 +95,10 @@ async function loadSound(name, url) {
 }
 
 async function playSound(name) {
+  if (!shouldPlaySound(name)) {
+    return;
+  }
+
   let fallbackTimer = 0;
   let didNotify = false;
   let audio = null;
@@ -89,7 +112,6 @@ async function playSound(name) {
     if (audio) {
       activeSounds.delete(audio);
     }
-    notifySoundPlayed(name);
   };
 
   try {
@@ -103,7 +125,7 @@ async function playSound(name) {
       return;
     }
     audio = template.cloneNode(true);
-    audio.volume = template.volume;
+    audio.volume = soundConfig.volume;
     audio.currentTime = 0;
     activeSounds.add(audio);
     audio.addEventListener(
@@ -138,9 +160,7 @@ async function playSound(name) {
     }
     await audio.play();
     reportSoundIssue("play-started", { name });
-    if (name !== "end") {
-      notifySoundPlayed(name);
-    } else {
+    if (name === "end") {
       fallbackTimer = setTimeout(finishEndSound, getSoundFallbackMs(audio));
     }
   } catch (error) {
@@ -662,6 +682,9 @@ window.voiceOverlay.onEvent(async ({ type, payload }) => {
     case "paste:done":
       void playSound("end");
       break;
+    case "config":
+      soundConfig = normalizeSoundConfig(payload?.sounds);
+      break;
     default:
       break;
   }
@@ -714,6 +737,7 @@ function applyOverlayAppearance(overlay) {
 }
 
 window.voiceOverlay.getConfig().then((config) => {
+  soundConfig = normalizeSoundConfig(config?.sounds);
   applyOverlayAppearance(config?.overlay);
   updateView();
 });

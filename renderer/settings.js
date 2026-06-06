@@ -99,6 +99,11 @@
     promptHotkeyList: $("promptHotkeyList"),
     configPath: $("configPath"),
     autoStart: $("autoStart"),
+    soundEnabled: $("soundEnabled"),
+    soundStart: $("soundStart"),
+    soundEnd: $("soundEnd"),
+    soundVolume: $("soundVolume"),
+    soundVolumeLabel: $("soundVolumeLabel"),
     micDot: $("micDot"),
     micText: $("micText"),
     checkMicBtn: $("checkMicBtn"),
@@ -154,6 +159,45 @@
   // ===== Dirty state & auto-save =====
 
   let _saveTimer = null;
+  const SOUND_DEFAULTS = {
+    enabled: true,
+    start: true,
+    end: true,
+    volume: 0.72,
+  };
+
+  function normalizeSoundVolume(value) {
+    const volume = Number(value);
+    if (!Number.isFinite(volume)) return SOUND_DEFAULTS.volume;
+    return Math.max(0, Math.min(1, volume));
+  }
+
+  function normalizeSoundConfig(sounds) {
+    const source = sounds && typeof sounds === "object" ? sounds : {};
+    return {
+      enabled: source.enabled !== false,
+      start: source.start !== false,
+      end: source.end !== false,
+      volume: normalizeSoundVolume(source.volume),
+    };
+  }
+
+  function formatSoundVolume(volume) {
+    return `${Math.round(normalizeSoundVolume(volume) * 100)}%`;
+  }
+
+  function updateSoundControls() {
+    const enabled = el.soundEnabled?.checked !== false;
+    for (const control of [el.soundStart, el.soundEnd, el.soundVolume]) {
+      if (control) control.disabled = !enabled;
+    }
+    document.querySelectorAll(".sound-dependent-row").forEach((row) => {
+      row.classList.toggle("is-disabled", !enabled);
+    });
+    if (el.soundVolumeLabel) {
+      el.soundVolumeLabel.textContent = formatSoundVolume(el.soundVolume?.value);
+    }
+  }
 
   function autoSaveForm() {
     isDirty = true;
@@ -473,6 +517,12 @@
     el.enablePunc.checked = c.request?.enable_punc !== false;
     el.removeTrailingPeriod.checked = c.app?.remove_trailing_period !== false;
     el.keepClipboard.checked = c.app?.keep_clipboard !== false;
+    const sounds = normalizeSoundConfig(c.sounds);
+    el.soundEnabled.checked = sounds.enabled;
+    el.soundStart.checked = sounds.start;
+    el.soundEnd.checked = sounds.end;
+    el.soundVolume.value = String(sounds.volume);
+    updateSoundControls();
 
     el.boostingTableId.value = c.request?.corpus?.boosting_table_id || "";
 
@@ -516,6 +566,13 @@
     config.app.remove_trailing_period = el.removeTrailingPeriod.checked;
     config.app.keep_clipboard = el.keepClipboard.checked;
     config.app.theme = currentThemePreference;
+
+    config.sounds = normalizeSoundConfig({
+      enabled: el.soundEnabled.checked,
+      start: el.soundStart.checked,
+      end: el.soundEnd.checked,
+      volume: el.soundVolume.value,
+    });
 
     config.connection = config.connection || {};
     config.connection.url = el.wsUrl.value.trim();
@@ -1309,6 +1366,16 @@ SOFTWARE.`;
   // Auto-start
   el.autoStart.addEventListener("change", async () => {
     await window.voiceSettings.setLoginItemSettings(el.autoStart.checked);
+  });
+  el.soundEnabled.addEventListener("change", () => {
+    updateSoundControls();
+    saveFormNow();
+  });
+  el.soundStart.addEventListener("change", saveFormNow);
+  el.soundEnd.addEventListener("change", saveFormNow);
+  el.soundVolume.addEventListener("input", () => {
+    updateSoundControls();
+    autoSaveForm();
   });
 
   // Permissions

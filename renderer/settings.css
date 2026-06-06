@@ -281,6 +281,18 @@ body {
   padding: 4px 0;
 }
 
+.sound-settings-card {
+  margin-top: 12px;
+}
+
+.sound-dependent-row.is-disabled {
+  opacity: 0.58;
+}
+
+.sound-dependent-row input:disabled {
+  cursor: not-allowed;
+}
+
 /* ===== Row ===== */
 
 .row {

@@ -553,7 +553,6 @@ let suppressCloseError = false;
 let expectingSessionClose = false;
 let receivedAudioChunkCount = 0;
 let pendingAudioStopResolve = null;
-let pendingSoundPlayedResolve = null;
 let isQuitting = false;
 let wsReady = false;
 let audioWarmupReady = false;
@@ -738,24 +737,6 @@ function waitForRendererAudioStop(timeoutMs = 1200) {
     };
 
     pendingAudioStopResolve = finish;
-    setTimeout(finish, timeoutMs);
-  });
-}
-
-function waitForRendererSoundPlayed(timeoutMs = 2600) {
-  return new Promise((resolve) => {
-    let settled = false;
-
-    const finish = () => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      pendingSoundPlayedResolve = null;
-      resolve();
-    };
-
-    pendingSoundPlayedResolve = finish;
     setTimeout(finish, timeoutMs);
   });
 }
@@ -989,9 +970,7 @@ async function finishRecordingFlow() {
       return;
     }
     await cleanupSession();
-    const soundPlayed = waitForRendererSoundPlayed();
     sendOverlayMessage("paste:done");
-    await soundPlayed;
     resetTranscript();
     hideOverlay();
     setState("idle");
@@ -1254,6 +1233,7 @@ app.whenReady().then(() => {
   ipcMain.handle("app:get-config", () => ({
     hotkey: getHotkey(),
     overlay: getOverlayAppearance(),
+    sounds: currentConfig.sounds,
   }));
 
   ipcMain.handle("overlay:update-appearance", (_event, appearance) => {
@@ -1336,6 +1316,7 @@ app.whenReady().then(() => {
     saveConfigText(String(payload?.configText || ""));
     reloadRuntimeConfig();
     registerShortcuts();
+    sendOverlayMessage("config", { sounds: currentConfig.sounds });
 
     logInfo("settings saved", {
       hotkey: getHotkey(),
@@ -1355,6 +1336,7 @@ app.whenReady().then(() => {
     saveConfig(configObject);
     reloadRuntimeConfig();
     registerShortcuts();
+    sendOverlayMessage("config", { sounds: currentConfig.sounds });
 
     logInfo("settings saved (object)", { hotkey: getHotkey() });
 
@@ -1373,6 +1355,7 @@ app.whenReady().then(() => {
     resetConfigToDefault();
     reloadRuntimeConfig();
     registerShortcuts();
+    sendOverlayMessage("config", { sounds: currentConfig.sounds });
 
     logInfo("config reset to default");
 
@@ -1494,12 +1477,6 @@ app.whenReady().then(() => {
   ipcMain.on("renderer:audio-stopped", () => {
     if (pendingAudioStopResolve) {
       pendingAudioStopResolve();
-    }
-  });
-
-  ipcMain.on("renderer:sound-played", (_event, payload) => {
-    if (payload?.name === "end" && pendingSoundPlayedResolve) {
-      pendingSoundPlayedResolve();
     }
   });
 

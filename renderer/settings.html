@@ -325,6 +325,52 @@
                 <span class="mono-text" id="configPath">-</span>
               </div>
             </div>
+            <div class="section-card sound-settings-card">
+              <div class="card-section-title">提示音</div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">启用提示音</div>
+                  <div class="desc">关闭后开始和结束都不播放声音</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="soundEnabled" checked />
+                  <span class="track"></span>
+                  <span class="thumb"></span>
+                </label>
+              </div>
+              <div class="row sound-dependent-row">
+                <div class="row-label">
+                  <div class="title">开始录音提示音</div>
+                  <div class="desc">按下快捷键开始录音时播放</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="soundStart" checked />
+                  <span class="track"></span>
+                  <span class="thumb"></span>
+                </label>
+              </div>
+              <div class="row sound-dependent-row">
+                <div class="row-label">
+                  <div class="title">结束粘贴提示音</div>
+                  <div class="desc">识别结果粘贴完成后播放</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="soundEnd" checked />
+                  <span class="track"></span>
+                  <span class="thumb"></span>
+                </label>
+              </div>
+              <div class="row sound-dependent-row">
+                <div class="row-label">
+                  <div class="title">提示音音量</div>
+                  <div class="desc">同时控制开始和结束提示音</div>
+                </div>
+                <div class="appearance-slider-row">
+                  <input type="range" id="soundVolume" min="0" max="1" step="0.01" />
+                  <span class="slider-value-label" id="soundVolumeLabel">72%</span>
+                </div>
+              </div>
+            </div>
           </section>
 
           <!-- 系统权限 -->

@@ -158,6 +158,12 @@ function parseContextHotwords(value) {
   return [];
 }
 
+function normalizeSoundVolume(value) {
+  const volume = Number(value);
+  if (!Number.isFinite(volume)) return 0.72;
+  return Math.max(0, Math.min(1, volume));
+}
+
 /**
  * loadConfig() 返回与 config.yaml / 官方 API 文档完全一致的字段名（snake_case）。
  * 新增 API 参数只需在 config.yaml 中添加，loadConfig 会自动透传。
@@ -172,6 +178,13 @@ function loadConfig() {
       hotkey_mode: raw.app?.hotkey_mode === "hold" ? "hold" : "toggle",
       remove_trailing_period: raw.app?.remove_trailing_period !== false,
       theme: raw.app?.theme || "system",
+    },
+    sounds: {
+      ...(raw.sounds || {}),
+      enabled: raw.sounds?.enabled !== false,
+      start: raw.sounds?.start !== false,
+      end: raw.sounds?.end !== false,
+      volume: normalizeSoundVolume(raw.sounds?.volume),
     },
     connection: {
       ...(raw.connection || {}),
