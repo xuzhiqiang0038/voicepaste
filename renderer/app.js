@@ -697,13 +697,16 @@ function applyOverlayAppearance(overlay) {
   root.style.setProperty("--text", overlay.text_color || "#ffffff");
 
   const partialRgb = hexToRgb(overlay.partial_text_color);
-  const partialOpacity = Number.isFinite(overlay.partial_text_opacity) ? overlay.partial_text_opacity : 0.58;
+  const partialOpacity = Number.isFinite(overlay.partial_text_opacity)
+    ? overlay.partial_text_opacity
+    : 0.58;
   root.style.setProperty("--partial-text", `rgba(${partialRgb}, ${partialOpacity})`);
 
   root.style.setProperty("--waveform", overlay.waveform_color || "#000000");
 
+  const quoteFontFamily = (fontFamily) => `"${String(fontFamily).replace(/"/g, '\\"')}"`;
   const fontFamily = overlay.font_family
-    ? `${overlay.font_family}, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif`
+    ? `${quoteFontFamily(overlay.font_family)}, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif`
     : '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", Arial, system-ui, sans-serif';
   root.style.setProperty("--transcript-font-family", fontFamily);
   root.style.setProperty("--transcript-font-size", `${overlay.font_size ?? 16}px`);

@@ -1679,7 +1679,32 @@ SOFTWARE.`;
     max_width: 680,
   };
 
+  const OVERLAY_PRESET_IDS = ["default", "preset_1", "preset_2", "preset_3"];
+  const CUSTOM_OVERLAY_PRESETS = ["preset_1", "preset_2", "preset_3"];
+  const FONT_FAMILY_OPTIONS = [
+    "",
+    "VoicePaste Source Han Sans SC",
+    "VoicePaste Source Han Serif SC",
+    "Microsoft YaHei UI",
+    "Microsoft YaHei",
+    "DengXian",
+    "SimHei",
+    "SimSun",
+    "KaiTi",
+    "FangSong",
+    "YouYuan",
+    "LiSu",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Noto Sans CJK SC",
+    "Segoe UI",
+    "Arial",
+    "Consolas",
+  ];
+
   let _oaDebounceTimer = null;
+  let _activeOverlayPreset = "default";
+  let _overlayPresets = {};
 
   function oaEl(id) {
     return document.getElementById(id);
@@ -1711,6 +1736,106 @@ SOFTWARE.`;
     ];
   }
 
+  function normalizeNumber(value, fallback) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function normalizeOverlayAppearance(appearance) {
+    const source = appearance && typeof appearance === "object" ? appearance : {};
+    return {
+      background_color: normalizeHex(source.background_color ?? OVERLAY_DEFAULTS.background_color),
+      background_opacity: normalizeNumber(
+        source.background_opacity,
+        OVERLAY_DEFAULTS.background_opacity,
+      ),
+      border_color: normalizeHex(source.border_color ?? OVERLAY_DEFAULTS.border_color),
+      border_width: normalizeNumber(source.border_width, OVERLAY_DEFAULTS.border_width),
+      border_radius: normalizeNumber(source.border_radius, OVERLAY_DEFAULTS.border_radius),
+      font_family: String(source.font_family ?? OVERLAY_DEFAULTS.font_family).trim(),
+      font_size: normalizeNumber(source.font_size, OVERLAY_DEFAULTS.font_size),
+      font_weight: normalizeNumber(source.font_weight, OVERLAY_DEFAULTS.font_weight),
+      text_color: normalizeHex(source.text_color ?? OVERLAY_DEFAULTS.text_color),
+      partial_text_color: normalizeHex(
+        source.partial_text_color ?? OVERLAY_DEFAULTS.partial_text_color,
+      ),
+      partial_text_opacity: normalizeNumber(
+        source.partial_text_opacity,
+        OVERLAY_DEFAULTS.partial_text_opacity,
+      ),
+      waveform_color: normalizeHex(source.waveform_color ?? OVERLAY_DEFAULTS.waveform_color),
+      max_width: normalizeNumber(source.max_width, OVERLAY_DEFAULTS.max_width),
+    };
+  }
+
+  function overlayAppearanceEquals(a, b) {
+    const left = normalizeOverlayAppearance(a);
+    const right = normalizeOverlayAppearance(b);
+    return Object.keys(OVERLAY_DEFAULTS).every((key) => left[key] === right[key]);
+  }
+
+  function isOverlayDefault(appearance) {
+    return overlayAppearanceEquals(appearance, OVERLAY_DEFAULTS);
+  }
+
+  function isCustomOverlayPreset(presetId) {
+    return CUSTOM_OVERLAY_PRESETS.includes(presetId);
+  }
+
+  function normalizeOverlayPresets(value) {
+    const presets = {};
+    if (!value || typeof value !== "object" || Array.isArray(value)) return presets;
+    for (const presetId of CUSTOM_OVERLAY_PRESETS) {
+      if (value[presetId] && typeof value[presetId] === "object") {
+        presets[presetId] = normalizeOverlayAppearance(value[presetId]);
+      }
+    }
+    return presets;
+  }
+
+  function resolveOverlayAppearance(presetId, presets = _overlayPresets) {
+    if (!isCustomOverlayPreset(presetId)) {
+      return normalizeOverlayAppearance(OVERLAY_DEFAULTS);
+    }
+    return normalizeOverlayAppearance(presets[presetId] || OVERLAY_DEFAULTS);
+  }
+
+  function normalizeOverlayConfig(config) {
+    const nextConfig = { ...(config || {}) };
+    const hasPresetState =
+      Object.hasOwn(nextConfig, "overlay_active_preset") ||
+      Object.hasOwn(nextConfig, "overlay_presets");
+    const presets = normalizeOverlayPresets(nextConfig.overlay_presets);
+    let activePreset = OVERLAY_PRESET_IDS.includes(nextConfig.overlay_active_preset)
+      ? nextConfig.overlay_active_preset
+      : "default";
+
+    if (!hasPresetState) {
+      const legacyOverlay = normalizeOverlayAppearance(nextConfig.overlay || OVERLAY_DEFAULTS);
+      if (!isOverlayDefault(legacyOverlay)) {
+        activePreset = "preset_1";
+        presets.preset_1 = legacyOverlay;
+      }
+    }
+
+    const appearance = resolveOverlayAppearance(activePreset, presets);
+    nextConfig.overlay_active_preset = activePreset;
+    nextConfig.overlay_presets = presets;
+    nextConfig.overlay = appearance;
+
+    return { config: nextConfig, activePreset, presets, appearance };
+  }
+
+  function quoteFontFamily(fontFamily) {
+    return `"${String(fontFamily).replace(/"/g, '\\"')}"`;
+  }
+
+  function buildPreviewFontFamily(fontFamily) {
+    return fontFamily
+      ? `${quoteFontFamily(fontFamily)}, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif`
+      : '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", Arial, system-ui, sans-serif';
+  }
+
   function updatePreview(appearance) {
     const bubble = document.getElementById("previewBubble");
     const finalText = document.getElementById("previewFinalText");
@@ -1718,7 +1843,7 @@ SOFTWARE.`;
     const wave = document.getElementById("previewWave");
     if (!bubble) return;
 
-    const o = { ...OVERLAY_DEFAULTS, ...(appearance || {}) };
+    const o = normalizeOverlayAppearance(appearance);
 
     // Background
     const [br, bg, bb] = hexToRgbParts(o.background_color);
@@ -1736,13 +1861,9 @@ SOFTWARE.`;
     bubble.style.maxWidth = `min(${o.max_width}px, 100%)`;
 
     // Font
-    const fontFamily = o.font_family
-      ? `${o.font_family}, -apple-system, "Microsoft YaHei", sans-serif`
-      : '-apple-system, BlinkMacSystemFont, "Microsoft YaHei UI", "Microsoft YaHei", sans-serif';
-
     for (const span of [finalText, partialText]) {
       if (span) {
-        span.style.fontFamily = fontFamily;
+        span.style.fontFamily = buildPreviewFontFamily(o.font_family);
         span.style.fontSize = `${o.font_size}px`;
         span.style.fontWeight = o.font_weight;
       }
@@ -1763,22 +1884,48 @@ SOFTWARE.`;
     }
   }
 
+  function readFontFamilyField() {
+    const mode = oaEl("oa-font-family-mode")?.value || "";
+    if (mode === "__custom__") {
+      return (oaEl("oa-font-family-custom")?.value || "").trim();
+    }
+    return mode;
+  }
+
+  function setFontFamilyField(fontFamily) {
+    const normalized = String(fontFamily || "").trim();
+    const modeEl = oaEl("oa-font-family-mode");
+    const customEl = oaEl("oa-font-family-custom");
+    const isPreset = FONT_FAMILY_OPTIONS.includes(normalized);
+
+    if (modeEl) modeEl.value = isPreset ? normalized : "__custom__";
+    if (customEl) {
+      customEl.value = isPreset ? "" : normalized;
+      customEl.classList.toggle("hidden", isPreset);
+    }
+  }
+
   function readOverlayForm() {
-    return {
+    return normalizeOverlayAppearance({
       background_color: oaEl("oa-background-color")?.value || OVERLAY_DEFAULTS.background_color,
-      background_opacity: Number(oaEl("oa-background-opacity")?.value ?? OVERLAY_DEFAULTS.background_opacity),
+      background_opacity: Number(
+        oaEl("oa-background-opacity")?.value ?? OVERLAY_DEFAULTS.background_opacity,
+      ),
       border_color: oaEl("oa-border-color")?.value || OVERLAY_DEFAULTS.border_color,
       border_width: Number(oaEl("oa-border-width")?.value ?? OVERLAY_DEFAULTS.border_width),
       border_radius: Number(oaEl("oa-border-radius")?.value ?? OVERLAY_DEFAULTS.border_radius),
-      font_family: (oaEl("oa-font-family")?.value || "").trim(),
+      font_family: readFontFamilyField(),
       font_size: Number(oaEl("oa-font-size")?.value ?? OVERLAY_DEFAULTS.font_size),
       font_weight: Number(oaEl("oa-font-weight")?.value ?? OVERLAY_DEFAULTS.font_weight),
       text_color: oaEl("oa-text-color")?.value || OVERLAY_DEFAULTS.text_color,
-      partial_text_color: oaEl("oa-partial-text-color")?.value || OVERLAY_DEFAULTS.partial_text_color,
-      partial_text_opacity: Number(oaEl("oa-partial-text-opacity")?.value ?? OVERLAY_DEFAULTS.partial_text_opacity),
+      partial_text_color:
+        oaEl("oa-partial-text-color")?.value || OVERLAY_DEFAULTS.partial_text_color,
+      partial_text_opacity: Number(
+        oaEl("oa-partial-text-opacity")?.value ?? OVERLAY_DEFAULTS.partial_text_opacity,
+      ),
       waveform_color: oaEl("oa-waveform-color")?.value || OVERLAY_DEFAULTS.waveform_color,
       max_width: Number(oaEl("oa-max-width")?.value ?? OVERLAY_DEFAULTS.max_width),
-    };
+    });
   }
 
   function setColorField(baseId, hexValue) {
@@ -1797,7 +1944,7 @@ SOFTWARE.`;
   }
 
   function populateOverlayForm(overlay) {
-    const o = { ...OVERLAY_DEFAULTS, ...(overlay || {}) };
+    const o = normalizeOverlayAppearance(overlay);
 
     setColorField("oa-background-color", o.background_color);
     setSliderField("oa-background-opacity", o.background_opacity);
@@ -1812,10 +1959,10 @@ SOFTWARE.`;
     setColorField("oa-partial-text-color", o.partial_text_color);
     setSliderField("oa-partial-text-opacity", o.partial_text_opacity);
     const partialOpacityLabel = oaEl("oa-partial-text-opacity-label");
-    if (partialOpacityLabel) partialOpacityLabel.textContent = Number(o.partial_text_opacity).toFixed(2);
+    if (partialOpacityLabel)
+      partialOpacityLabel.textContent = Number(o.partial_text_opacity).toFixed(2);
 
-    const fontFamilyEl = oaEl("oa-font-family");
-    if (fontFamilyEl) fontFamilyEl.value = o.font_family || "";
+    setFontFamilyField(o.font_family);
     setSliderField("oa-font-size", o.font_size, "px");
     const fontWeightEl = oaEl("oa-font-weight");
     if (fontWeightEl) fontWeightEl.value = String(o.font_weight || 500);
@@ -1826,15 +1973,91 @@ SOFTWARE.`;
     updatePreview(o);
   }
 
-  async function saveOverlayAppearance(appearance) {
+  function setOverlayPresetButtons(activePreset) {
+    document.querySelectorAll("#overlayPresetSwitch .seg-btn").forEach((button) => {
+      const isActive = button.dataset.preset === activePreset;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-selected", String(isActive));
+    });
+  }
+
+  function setOverlayFormReadOnly(readOnly) {
+    document
+      .querySelectorAll("#section-overlay-appearance input, #section-overlay-appearance select")
+      .forEach((control) => {
+        control.disabled = readOnly;
+      });
+    const resetBtn = oaEl("overlayResetBtn");
+    if (resetBtn) resetBtn.disabled = readOnly;
+  }
+
+  function applyOverlayState(activePreset, presets, appearance) {
+    _activeOverlayPreset = activePreset;
+    _overlayPresets = { ...(presets || {}) };
+    setOverlayPresetButtons(activePreset);
+    populateOverlayForm(appearance);
+    setOverlayFormReadOnly(activePreset === "default");
+    window.voiceSettings.updateAppearance(appearance).catch(() => {});
+  }
+
+  function updateParsedOverlayConfig(nextConfig) {
+    parsedConfig = nextConfig;
+    _activeOverlayPreset = nextConfig.overlay_active_preset || "default";
+    _overlayPresets = normalizeOverlayPresets(nextConfig.overlay_presets);
+  }
+
+  async function persistOverlayConfig(nextConfig) {
+    updateParsedOverlayConfig(nextConfig);
+    await window.voiceSettings.saveConfigObject(nextConfig).catch(() => {});
+  }
+
+  async function saveOverlayPresetSelection(presetId) {
     const currentData = await window.voiceSettings.getData().catch(() => null);
     if (!currentData) return;
-    const nextConfig = { ...(currentData.parsedConfig || {}), overlay: appearance };
-    await window.voiceSettings.saveConfigObject(nextConfig).catch(() => {});
-    await window.voiceSettings.updateAppearance(appearance).catch(() => {});
+    const normalized = normalizeOverlayConfig(currentData.parsedConfig || {});
+    const presets = { ...normalized.presets };
+    const activePreset = OVERLAY_PRESET_IDS.includes(presetId) ? presetId : "default";
+    const appearance = resolveOverlayAppearance(activePreset, presets);
+    const nextConfig = {
+      ...normalized.config,
+      overlay: appearance,
+      overlay_active_preset: activePreset,
+      overlay_presets: presets,
+    };
+    applyOverlayState(activePreset, presets, appearance);
+    await persistOverlayConfig(nextConfig);
+  }
+
+  async function saveOverlayAppearance(appearance) {
+    const normalizedAppearance = normalizeOverlayAppearance(appearance);
+    const currentData = await window.voiceSettings.getData().catch(() => null);
+    if (!currentData) return;
+    const normalized = normalizeOverlayConfig(currentData.parsedConfig || {});
+    const activePreset = OVERLAY_PRESET_IDS.includes(_activeOverlayPreset)
+      ? _activeOverlayPreset
+      : normalized.activePreset;
+    const presets = { ...normalized.presets };
+
+    if (isCustomOverlayPreset(activePreset)) {
+      presets[activePreset] = normalizedAppearance;
+    }
+
+    const nextAppearance =
+      activePreset === "default"
+        ? normalizeOverlayAppearance(OVERLAY_DEFAULTS)
+        : normalizedAppearance;
+    const nextConfig = {
+      ...normalized.config,
+      overlay: nextAppearance,
+      overlay_active_preset: activePreset,
+      overlay_presets: presets,
+    };
+    await persistOverlayConfig(nextConfig);
+    await window.voiceSettings.updateAppearance(nextAppearance).catch(() => {});
   }
 
   function onOverlayFieldChange() {
+    if (_activeOverlayPreset === "default") return;
     const appearance = readOverlayForm();
     updatePreview(appearance);
     window.voiceSettings.updateAppearance(appearance).catch(() => {});
@@ -1862,7 +2085,31 @@ SOFTWARE.`;
     onOverlayFieldChange();
   }
 
+  async function flushPendingOverlaySave() {
+    if (!_oaDebounceTimer) return;
+    clearTimeout(_oaDebounceTimer);
+    _oaDebounceTimer = null;
+    if (isCustomOverlayPreset(_activeOverlayPreset)) {
+      await saveOverlayAppearance(readOverlayForm());
+    }
+  }
+
+  async function activateOverlayPreset(presetId) {
+    const nextPreset = OVERLAY_PRESET_IDS.includes(presetId) ? presetId : "default";
+    if (nextPreset === _activeOverlayPreset) return;
+    await flushPendingOverlaySave();
+    const appearance = resolveOverlayAppearance(nextPreset, _overlayPresets);
+    applyOverlayState(nextPreset, _overlayPresets, appearance);
+    await saveOverlayPresetSelection(nextPreset);
+  }
+
   function initOverlayAppearance() {
+    document.querySelectorAll("#overlayPresetSwitch .seg-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        activateOverlayPreset(button.dataset.preset);
+      });
+    });
+
     const colorFields = [
       ["oa-background-color", "oa-background-color-label"],
       ["oa-border-color", "oa-border-color-label"],
@@ -1893,10 +2140,16 @@ SOFTWARE.`;
       onSliderChange("oa-max-width", "oa-max-width-label", "px", 0),
     );
 
-    oaEl("oa-font-family")?.addEventListener("input", onOverlayFieldChange);
+    oaEl("oa-font-family-mode")?.addEventListener("change", () => {
+      const isCustom = oaEl("oa-font-family-mode")?.value === "__custom__";
+      oaEl("oa-font-family-custom")?.classList.toggle("hidden", !isCustom);
+      onOverlayFieldChange();
+    });
+    oaEl("oa-font-family-custom")?.addEventListener("input", onOverlayFieldChange);
     oaEl("oa-font-weight")?.addEventListener("change", onOverlayFieldChange);
 
     oaEl("overlayResetBtn")?.addEventListener("click", async () => {
+      if (_activeOverlayPreset === "default") return;
       populateOverlayForm(OVERLAY_DEFAULTS);
       await saveOverlayAppearance(OVERLAY_DEFAULTS);
     });
@@ -1905,10 +2158,15 @@ SOFTWARE.`;
   async function loadOverlayAppearance() {
     try {
       const data = await window.voiceSettings.getData();
-      const overlay = data.parsedConfig?.overlay || {};
-      populateOverlayForm(overlay);
+      const normalized = normalizeOverlayConfig(data.parsedConfig || {});
+      applyOverlayState(normalized.activePreset, normalized.presets, normalized.appearance);
+      updateParsedOverlayConfig(normalized.config);
+
+      if (JSON.stringify(data.parsedConfig || {}) !== JSON.stringify(normalized.config)) {
+        await window.voiceSettings.saveConfigObject(normalized.config).catch(() => {});
+      }
     } catch (_) {
-      populateOverlayForm(OVERLAY_DEFAULTS);
+      applyOverlayState("default", {}, OVERLAY_DEFAULTS);
     }
   }
 

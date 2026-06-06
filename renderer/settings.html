@@ -838,6 +838,19 @@
               </div>
             </div>
 
+            <div class="oa-preset-panel">
+              <div>
+                <div class="oa-preset-title">外观方案</div>
+                <div class="oa-preset-desc">默认方案只读，方案 1-3 可保存自定义样式</div>
+              </div>
+              <div class="seg-control oa-preset-switch" id="overlayPresetSwitch" role="tablist" aria-label="浮层外观方案">
+                <button type="button" class="seg-btn active" data-preset="default" role="tab" aria-selected="true">默认</button>
+                <button type="button" class="seg-btn" data-preset="preset_1" role="tab" aria-selected="false">方案 1</button>
+                <button type="button" class="seg-btn" data-preset="preset_2" role="tab" aria-selected="false">方案 2</button>
+                <button type="button" class="seg-btn" data-preset="preset_3" role="tab" aria-selected="false">方案 3</button>
+              </div>
+            </div>
+
             <!-- 实时预览 -->
             <div class="oa-preview-sticky">
               <div class="oa-preview-wrap">
@@ -965,7 +978,35 @@
                   <div class="title">字体名称</div>
                   <div class="desc">留空使用系统默认字体。例：微软雅黑、PingFang SC、Consolas</div>
                 </div>
-                <input type="text" id="oa-font-family" class="input-field appearance-font-input" placeholder="系统默认" />
+                <div class="appearance-font-controls">
+                  <select id="oa-font-family-mode" class="select-input appearance-font-select">
+                    <option value="">系统默认</option>
+                    <option value="VoicePaste Source Han Sans SC">思源黑体 SC（内置）</option>
+                    <option value="VoicePaste Source Han Serif SC">思源宋体 SC（内置）</option>
+                    <option value="Microsoft YaHei UI">Microsoft YaHei UI</option>
+                    <option value="Microsoft YaHei">Microsoft YaHei</option>
+                    <option value="DengXian">等线 DengXian</option>
+                    <option value="SimHei">黑体 SimHei</option>
+                    <option value="SimSun">宋体 SimSun</option>
+                    <option value="KaiTi">楷体 KaiTi</option>
+                    <option value="FangSong">仿宋 FangSong</option>
+                    <option value="YouYuan">幼圆 YouYuan</option>
+                    <option value="LiSu">隶书 LiSu</option>
+                    <option value="PingFang SC">PingFang SC</option>
+                    <option value="Hiragino Sans GB">Hiragino Sans GB</option>
+                    <option value="Noto Sans CJK SC">Noto Sans CJK SC</option>
+                    <option value="Segoe UI">Segoe UI</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Consolas">Consolas</option>
+                    <option value="__custom__">自定义</option>
+                  </select>
+                  <input
+                    type="text"
+                    id="oa-font-family-custom"
+                    class="input-field appearance-font-input hidden"
+                    placeholder="输入字体名称"
+                  />
+                </div>
               </div>
               <div class="row">
                 <div class="row-label">

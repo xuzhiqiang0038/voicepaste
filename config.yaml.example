@@ -20,6 +20,9 @@ overlay:
   waveform_color: "#000000"     # 波形动画颜色
   max_width: 680                # 气泡最大宽度 px
 
+overlay_active_preset: default   # 当前浮层外观方案：default / preset_1 / preset_2 / preset_3
+overlay_presets: {}              # 三套自定义浮层外观方案，由设置页保存
+
 connection:
   url: wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async
   app_id: ""

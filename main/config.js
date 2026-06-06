@@ -340,7 +340,9 @@ function getOverlayAppearance() {
     font_weight: Number(overlay.font_weight ?? OVERLAY_DEFAULTS.font_weight),
     text_color: String(overlay.text_color ?? OVERLAY_DEFAULTS.text_color),
     partial_text_color: String(overlay.partial_text_color ?? OVERLAY_DEFAULTS.partial_text_color),
-    partial_text_opacity: Number(overlay.partial_text_opacity ?? OVERLAY_DEFAULTS.partial_text_opacity),
+    partial_text_opacity: Number(
+      overlay.partial_text_opacity ?? OVERLAY_DEFAULTS.partial_text_opacity,
+    ),
     waveform_color: String(overlay.waveform_color ?? OVERLAY_DEFAULTS.waveform_color),
     max_width: Number(overlay.max_width ?? OVERLAY_DEFAULTS.max_width),
   };

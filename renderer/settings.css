@@ -1,5 +1,21 @@
 @import url("./theme.css");
 
+@font-face {
+  font-family: "VoicePaste Source Han Sans SC";
+  src: url("./assets/fonts/SourceHanSansSC-Regular.otf") format("opentype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "VoicePaste Source Han Serif SC";
+  src: url("./assets/fonts/SourceHanSerifSC-Regular.otf") format("opentype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 /* ===== Reset & Base ===== */
 
 *,
@@ -1588,6 +1604,27 @@ kbd {
   flex-shrink: 0;
 }
 
+.appearance-font-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 320px;
+}
+
+.appearance-font-select {
+  width: 230px;
+}
+
+.appearance-font-controls .appearance-font-input {
+  width: 190px;
+}
+
+.appearance-font-controls .hidden {
+  display: none;
+}
+
 .select-input {
   background: var(--input-bg);
   border: 1px solid var(--border);
@@ -1605,6 +1642,34 @@ kbd {
 }
 
 /* ===== Overlay Appearance: Preview Panel ===== */
+
+.oa-preset-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 14px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.oa-preset-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.oa-preset-desc {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.oa-preset-switch {
+  background: var(--bg);
+}
 
 .oa-preview-wrap {
   margin-bottom: 20px;
@@ -1631,7 +1696,8 @@ kbd {
   justify-content: flex-end;
   gap: 10px;
   padding: 28px 24px 20px;
-  background: repeating-conic-gradient(var(--fill-subtle) 0% 25%, transparent 0% 50%) 0 0 / 16px 16px;
+  background:
+    repeating-conic-gradient(var(--fill-subtle) 0% 25%, transparent 0% 50%) 0 0 / 16px 16px;
   min-height: 120px;
 }
 
@@ -1669,10 +1735,13 @@ kbd {
   padding-bottom: 16px;
 }
 
-
 /* Overlay appearance: breathing room between rows and cards */
 #section-overlay-appearance .section-card {
   margin-bottom: 12px;
+}
+
+#section-overlay-appearance .section-header > div:last-child {
+  pointer-events: auto;
 }
 
 #section-overlay-appearance .section-card .row {
@@ -1682,4 +1751,10 @@ kbd {
 
 #section-overlay-appearance .card-section-title {
   padding: 16px 18px 8px;
+}
+
+#section-overlay-appearance input:disabled,
+#section-overlay-appearance select:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
