@@ -14,7 +14,6 @@
     <div class="shell">
       <aside class="sidebar">
         <div class="sidebar-header">
-          <img class="app-logo" src="./icon.png" alt="VoicePaste" />
           <span class="app-name">VoicePaste</span>
         </div>
         <nav class="sidebar-nav">
@@ -22,6 +21,10 @@
           <div class="nav-item active" data-section="home">
             <span class="nav-icon" data-icon="home"></span>
             <span>首页</span>
+          </div>
+          <div class="nav-item" data-section="stats">
+            <span class="nav-icon" data-icon="chart-no-axes-column"></span>
+            <span>使用统计</span>
           </div>
           <div class="nav-divider"></div>
           <div class="nav-group-label">设置</div>
@@ -99,79 +102,142 @@
       </aside>
 
       <main class="main">
-        <div class="main-inner">
+        <div class="main-inner" data-section="home">
           <!-- 首页 -->
           <section class="section" id="section-home">
             <div class="welcome-text"><span id="greetingText">下午好</span></div>
 
-            <div style="margin-top: 20px">
-              <div class="achievements-grid">
-                <div class="achievement-item">
-                  <div class="achievement-thumb"><img src="./calendar.jpg" alt="" /></div>
-                  <div class="achievement-text">
-                    <div class="achievement-value" id="achDaysUsed">0</div>
-                    <div class="achievement-label">已使用天数</div>
-                  </div>
-                </div>
-                <div class="achievement-item">
-                  <div class="achievement-thumb"><img src="./mic.jpg" alt="" /></div>
-                  <div class="achievement-text">
-                    <div class="achievement-value" id="achSessions">0</div>
-                    <div class="achievement-label">会话次数</div>
-                  </div>
-                </div>
-                <div class="achievement-item">
-                  <div class="achievement-thumb"><img src="./keyboard.jpg" alt="" /></div>
-                  <div class="achievement-text">
-                    <div class="achievement-value" id="achCharacters">0</div>
-                    <div class="achievement-label">总输入字数</div>
-                  </div>
-                </div>
-                <div class="achievement-item">
-                  <div class="achievement-thumb"><img src="./time.jpg" alt="" /></div>
-                  <div class="achievement-text">
-                    <div class="achievement-value" id="achTimeSaved">0s</div>
-                    <div class="achievement-label">总录音时长</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style="margin-top: 20px">
-              <div class="section-header">
-                <div><div class="section-title">使用统计</div></div>
-              </div>
-              <div class="section-card" style="padding: 16px 18px">
-                <div class="heatmap-layout">
-                  <div class="heatmap-left">
-                    <div class="heatmap-months" id="heatmapMonths"></div>
-                    <div class="heatmap-body">
-                      <div class="heatmap-days">
-                        <span></span>
-                        <span>一</span>
-                        <span></span>
-                        <span>三</span>
-                        <span></span>
-                        <span>五</span>
-                        <span></span>
-                      </div>
-                      <div class="heatmap-grid" id="heatmapGrid"></div>
+            <div class="metric-card-stack">
+              <article class="metric-card metric-overview-card">
+                <div class="metric-period">
+                  <div class="metric-card-title">今天</div>
+                  <div class="metric-card-values">
+                    <div class="metric-value-block">
+                      <div class="metric-value" id="homeTodayDuration">0 秒</div>
+                      <div class="metric-label">录音时长</div>
+                    </div>
+                    <div class="metric-value-block">
+                      <div class="metric-value" id="homeTodayCharacters">0 字</div>
+                      <div class="metric-label">输入字数</div>
                     </div>
                   </div>
-                  <div class="heatmap-stats">
-                    <span class="heatmap-stats-range">过去 26 周</span>
-                    <span class="heatmap-stats-total" id="heatmapTotal">共输入 <strong>0</strong> 字</span>
-                    <span class="heatmap-stats-total" id="heatmapTodayDuration">今日录音 <strong>0s</strong></span>
+                </div>
+                <div class="metric-period">
+                  <div class="metric-card-title">累计</div>
+                  <div class="metric-card-values">
+                    <div class="metric-value-block">
+                      <div class="metric-value" id="homeTotalDuration">0 秒</div>
+                      <div class="metric-label">录音时长</div>
+                    </div>
+                    <div class="metric-value-block">
+                      <div class="metric-value" id="homeTotalCharacters">0 字</div>
+                      <div class="metric-label">输入字数</div>
+                    </div>
                   </div>
+                </div>
+              </article>
+            </div>
+
+            <div class="stats-details">
+              <button
+                type="button"
+                class="stats-details-toggle"
+                id="statsDetailsToggle"
+                aria-expanded="false"
+                aria-controls="statsDetailsPanel"
+              >
+                <span>统计详情</span>
+                <span class="stats-details-chevron">›</span>
+              </button>
+              <div class="stats-details-panel" id="statsDetailsPanel" hidden>
+                <div class="detail-stat">
+                  <span class="detail-stat-value" id="homeTodaySessions">0 次</span>
+                  <span class="detail-stat-label">今日输入</span>
+                </div>
+                <div class="detail-stat">
+                  <span class="detail-stat-value" id="homeTotalSessions">0 次</span>
+                  <span class="detail-stat-label">累计输入</span>
+                </div>
+                <div class="detail-stat">
+                  <span class="detail-stat-value" id="homeActiveDays">0 天</span>
+                  <span class="detail-stat-label">活跃天数</span>
                 </div>
               </div>
             </div>
 
-            <div style="margin-top: 20px">
+            <div class="home-history-section">
               <div class="section-header">
                 <div><div class="section-title">输入记录</div></div>
               </div>
-              <div class="section-card" id="historyContainer"></div>
+              <div class="history-list" id="historyContainer"></div>
+            </div>
+          </section>
+
+          <!-- 使用统计 -->
+          <section class="section hidden" id="section-stats">
+            <div class="section-header stats-page-header">
+              <div>
+                <div class="section-title">使用统计</div>
+                <div class="section-subtitle">过去一年的语音输入活动</div>
+              </div>
+            </div>
+
+            <div class="stats-summary">
+              <div class="summary-stat">
+                <span class="summary-value" id="statsTodayDuration">0 秒</span>
+                <span class="summary-label">今日录音</span>
+              </div>
+              <div class="summary-stat">
+                <span class="summary-value" id="statsTodayCharacters">0 字</span>
+                <span class="summary-label">今日输入</span>
+              </div>
+              <div class="summary-stat">
+                <span class="summary-value" id="statsTotalDuration">0 秒</span>
+                <span class="summary-label">累计录音</span>
+              </div>
+              <div class="summary-stat">
+                <span class="summary-value" id="statsTotalCharacters">0 字</span>
+                <span class="summary-label">累计输入</span>
+              </div>
+            </div>
+
+            <div class="usage-heatmap-card">
+              <div class="usage-heatmap-header">
+                <div>
+                  <div class="usage-heatmap-title">输入活动</div>
+                  <div class="usage-heatmap-subtitle">颜色越深，当天输入字数越多</div>
+                </div>
+                <span class="usage-heatmap-range">过去 52 周</span>
+              </div>
+              <div class="heatmap-chart" id="heatmapChart">
+                <div class="heatmap-months" id="heatmapMonths"></div>
+                <div class="heatmap-body">
+                  <div class="heatmap-days" aria-hidden="true">
+                    <span></span>
+                    <span>一</span>
+                    <span></span>
+                    <span>三</span>
+                    <span></span>
+                    <span>五</span>
+                    <span></span>
+                  </div>
+                  <div
+                    class="heatmap-grid"
+                    id="heatmapGrid"
+                    aria-label="过去 52 周输入活动"
+                  ></div>
+                </div>
+                <div class="heatmap-tooltip" id="heatmapTooltip" role="tooltip"></div>
+              </div>
+              <div class="heatmap-legend" aria-hidden="true">
+                <span>少</span>
+                <span class="heatmap-legend-cell level-0"></span>
+                <span class="heatmap-legend-cell level-1"></span>
+                <span class="heatmap-legend-cell level-2"></span>
+                <span class="heatmap-legend-cell level-3"></span>
+                <span class="heatmap-legend-cell level-4"></span>
+                <span>多</span>
+              </div>
             </div>
           </section>
 

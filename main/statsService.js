@@ -2,7 +2,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { app } = require("electron");
 
-const MAX_DAILY_COUNTS_DAYS = 182;
+const STATS_SCHEMA_VERSION = 2;
+const HISTORY_FILE_PATTERN = /^\d{4}-\d{2}-\d{2}\.jsonl$/;
 
 let dataDir = null;
 let historyDir = null;
@@ -22,13 +23,30 @@ function statsPath() {
 
 function defaultStats() {
   return {
+    schemaVersion: STATS_SCHEMA_VERSION,
     firstUsedAt: null,
     totalSessions: 0,
     totalCharacters: 0,
     totalDurationMs: 0,
     dailyCounts: {},
     dailyDurations: {},
+    dailySessions: {},
   };
+}
+
+function normalizeDailyMap(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const normalized = {};
+  for (const [key, amount] of Object.entries(value)) {
+    const number = Number(amount);
+    if (Number.isFinite(number) && number > 0) {
+      normalized[key] = number;
+    }
+  }
+  return normalized;
 }
 
 function normalizeStats(nextStats) {
@@ -36,11 +54,13 @@ function normalizeStats(nextStats) {
   const normalized = {
     ...fallback,
     ...(nextStats || {}),
+    schemaVersion: Number(nextStats?.schemaVersion || 0),
     totalSessions: Number(nextStats?.totalSessions || 0),
     totalCharacters: Number(nextStats?.totalCharacters || 0),
     totalDurationMs: Number(nextStats?.totalDurationMs || 0),
-    dailyCounts: nextStats?.dailyCounts || {},
-    dailyDurations: nextStats?.dailyDurations || {},
+    dailyCounts: normalizeDailyMap(nextStats?.dailyCounts),
+    dailyDurations: normalizeDailyMap(nextStats?.dailyDurations),
+    dailySessions: normalizeDailyMap(nextStats?.dailySessions),
   };
 
   return normalized;
@@ -53,6 +73,10 @@ function loadStats() {
     stats = normalizeStats(JSON.parse(raw));
   } catch {
     stats = defaultStats();
+  }
+  if (stats.schemaVersion < STATS_SCHEMA_VERSION) {
+    stats = migrateStats(stats);
+    flushStats();
   }
   return stats;
 }
@@ -75,26 +99,8 @@ function dateKeyFromDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function pruneDailyCounts() {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - MAX_DAILY_COUNTS_DAYS);
-  const cutoffKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(cutoff.getDate()).padStart(2, "0")}`;
-  const keys = Object.keys(stats.dailyCounts);
-  for (const k of keys) {
-    if (k < cutoffKey) {
-      delete stats.dailyCounts[k];
-    }
-  }
-  for (const k of Object.keys(stats.dailyDurations || {})) {
-    if (k < cutoffKey) {
-      delete stats.dailyDurations[k];
-    }
-  }
-}
-
 function flushStats() {
   try {
-    pruneDailyCounts();
     fs.writeFileSync(statsPath(), JSON.stringify(stats, null, 2), "utf8");
   } catch (err) {
     console.error("[StatsService] failed to write stats.json", err);
@@ -154,6 +160,81 @@ function normalizeHistoryEntry(entry, dateKey, lineIndex) {
   };
 }
 
+function readHistoryAggregates() {
+  ensureHistoryDir();
+
+  const aggregates = {
+    dailyCounts: {},
+    dailyDurations: {},
+    dailySessions: {},
+  };
+
+  const files = fs
+    .readdirSync(historyDir)
+    .filter((name) => HISTORY_FILE_PATTERN.test(name))
+    .sort();
+
+  for (const fileName of files) {
+    const dateKey = fileName.replace(/\.jsonl$/, "");
+    const filePath = path.join(historyDir, fileName);
+    let lines;
+    try {
+      const raw = fs.readFileSync(filePath, "utf8").trim();
+      if (!raw) continue;
+      lines = raw.split("\n");
+    } catch {
+      continue;
+    }
+
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+      try {
+        const entry = normalizeHistoryEntry(JSON.parse(lines[lineIndex]), dateKey, lineIndex);
+        if (!entry.text) continue;
+        aggregates.dailyCounts[dateKey] =
+          (aggregates.dailyCounts[dateKey] || 0) + Number(entry.chars || entry.text.length);
+        aggregates.dailyDurations[dateKey] =
+          (aggregates.dailyDurations[dateKey] || 0) + Number(entry.durationMs || 0);
+        aggregates.dailySessions[dateKey] = (aggregates.dailySessions[dateKey] || 0) + 1;
+      } catch {
+        // Skip malformed history lines during migration.
+      }
+    }
+  }
+
+  return aggregates;
+}
+
+function migrateStats(previousStats) {
+  const migrated = {
+    ...previousStats,
+    schemaVersion: STATS_SCHEMA_VERSION,
+    dailyCounts: { ...previousStats.dailyCounts },
+    dailyDurations: { ...previousStats.dailyDurations },
+    dailySessions: { ...previousStats.dailySessions },
+  };
+  const recovered = readHistoryAggregates();
+
+  for (const [key, count] of Object.entries(recovered.dailyCounts)) {
+    migrated.dailyCounts[key] = count;
+  }
+  for (const [key, count] of Object.entries(recovered.dailySessions)) {
+    migrated.dailySessions[key] = count;
+  }
+  for (const [key, duration] of Object.entries(recovered.dailyDurations)) {
+    if (!migrated.dailyDurations[key] && duration > 0) {
+      migrated.dailyDurations[key] = duration;
+    }
+  }
+
+  for (const [key, count] of Object.entries(migrated.dailyCounts)) {
+    if (count > 0 && !migrated.dailySessions[key]) {
+      migrated.dailySessions[key] = 1;
+    }
+  }
+
+  return migrated;
+}
+
 function initStatsService() {
   resolveDataDir();
   loadStats();
@@ -177,6 +258,7 @@ function recordSession(text, options = {}) {
   const key = dateKeyFromDate(now);
   s.dailyCounts[key] = (s.dailyCounts[key] || 0) + charCount;
   s.dailyDurations[key] = (s.dailyDurations[key] || 0) + durationMs;
+  s.dailySessions[key] = (s.dailySessions[key] || 0) + 1;
 
   const historyEntry = {
     id: makeHistoryId(now),
@@ -194,7 +276,12 @@ function recordSession(text, options = {}) {
 }
 
 function getStats() {
-  return loadStats();
+  const currentStats = loadStats();
+  const activeDays = Object.values(currentStats.dailySessions).filter((count) => count > 0).length;
+  return {
+    ...currentStats,
+    activeDays,
+  };
 }
 
 function getHistory(daysBack) {
@@ -289,13 +376,13 @@ function deleteHistoryItem(id) {
     const s = loadStats();
     const removedChars = Number(removed.chars || removed.text.length || 0);
     const removedDuration = Number(removed.durationMs || 0);
-    const removedDateKey = dateKeyFromDate(new Date(removed.ts));
 
     s.totalSessions = Math.max(0, Number(s.totalSessions || 0) - 1);
     s.totalCharacters = Math.max(0, Number(s.totalCharacters || 0) - removedChars);
     s.totalDurationMs = Math.max(0, Number(s.totalDurationMs || 0) - removedDuration);
-    subtractStatValue(s.dailyCounts, removedDateKey, removedChars);
-    subtractStatValue(s.dailyDurations, removedDateKey, removedDuration);
+    subtractStatValue(s.dailyCounts, dateKey, removedChars);
+    subtractStatValue(s.dailyDurations, dateKey, removedDuration);
+    subtractStatValue(s.dailySessions, dateKey, 1);
     flushStats();
 
     return { ok: true };

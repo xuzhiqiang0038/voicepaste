@@ -7,57 +7,57 @@
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB",
     "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", Arial, system-ui, sans-serif;
 
-  --bg: #141413;
-  --surface: #1c1c1a;
-  --surface-hover: #262624;
-  --card: #222220;
-  --input-bg: #1c1c1a;
+  --bg: #111111;
+  --surface: #1a1a1a;
+  --surface-hover: #242424;
+  --card: #1d1d1f;
+  --input-bg: #181818;
 
-  --border: #30302e;
-  --border-subtle: #262624;
-  --border-hover: #3d3d3a;
+  --border: #303030;
+  --border-subtle: #262626;
+  --border-hover: #444444;
 
-  --accent: #d97757;
-  --accent-dim: rgba(217, 119, 87, 0.12);
-  --accent-glow: rgba(217, 119, 87, 0.25);
-  --accent-hover: #e8896a;
-  --accent-active: #c46640;
-  --accent-soft: rgba(217, 119, 87, 0.1);
-  --text-on-accent: #faf9f5;
+  --accent: #f5f5f5;
+  --accent-dim: rgba(255, 255, 255, 0.12);
+  --accent-glow: rgba(255, 255, 255, 0.18);
+  --accent-hover: #dddddd;
+  --accent-active: #c8c8c8;
+  --accent-soft: rgba(255, 255, 255, 0.08);
+  --text-on-accent: #111111;
 
-  --toggle-bg: #3d3d3a;
-  --toggle-active: #d97757;
+  --toggle-bg: #444444;
+  --toggle-active: #f5f5f5;
 
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-card: none;
 
-  --text: #eae9e4;
-  --text-dim: #a8a7a1;
-  --text-muted: #76756f;
+  --text: #f5f5f5;
+  --text-dim: #b3b3b3;
+  --text-muted: #7d7d7d;
 
-  --success: #6cbf6c;
-  --warning: #e8a840;
-  --error: #e05550;
+  --success: #d6d6d6;
+  --warning: #a6a6a6;
+  --error: #777777;
 
-  --glow-success: rgba(108, 191, 108, 0.3);
-  --glow-warning: rgba(232, 168, 64, 0.3);
-  --glow-error: rgba(224, 85, 80, 0.3);
+  --glow-success: transparent;
+  --glow-warning: transparent;
+  --glow-error: transparent;
 
-  --fill-subtle: rgba(250, 249, 245, 0.02);
-  --fill-hover: rgba(250, 249, 245, 0.03);
-  --fill-interactive: rgba(250, 249, 245, 0.06);
-  --fill-track: rgba(250, 249, 245, 0.1);
+  --fill-subtle: rgba(255, 255, 255, 0.02);
+  --fill-hover: rgba(255, 255, 255, 0.05);
+  --fill-interactive: rgba(255, 255, 255, 0.08);
+  --fill-track: rgba(255, 255, 255, 0.12);
 
-  --scrollbar-thumb: rgba(250, 249, 245, 0.08);
-  --scrollbar-thumb-hover: rgba(250, 249, 245, 0.16);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
 
-  --tag-bg: rgba(217, 119, 87, 0.08);
-  --tag-border: rgba(217, 119, 87, 0.15);
-  --tag-match-bg: rgba(217, 119, 87, 0.18);
-  --tag-hover-bg: rgba(217, 119, 87, 0.14);
-  --tag-hover-border: rgba(217, 119, 87, 0.25);
+  --tag-bg: rgba(255, 255, 255, 0.08);
+  --tag-border: rgba(255, 255, 255, 0.14);
+  --tag-match-bg: rgba(255, 255, 255, 0.14);
+  --tag-hover-bg: rgba(255, 255, 255, 0.12);
+  --tag-hover-border: rgba(255, 255, 255, 0.24);
 
-  --sidebar-bg: #1a1a18;
-  --sidebar-active-bg: rgba(217, 119, 87, 0.1);
+  --sidebar-bg: #161616;
+  --sidebar-active-bg: rgba(255, 255, 255, 0.08);
 
   --overlay-bg: rgba(0, 0, 0, 0.94);
   --overlay-card: rgb(0, 0, 0);
@@ -67,11 +67,11 @@
   --overlay-spinner-border: rgba(250, 249, 245, 0.15);
   --overlay-bar: rgba(250, 249, 245, 0.75);
 
-  --heatmap-0: #2a2a28;
-  --heatmap-1: rgba(217, 119, 87, 0.15);
-  --heatmap-2: rgba(217, 119, 87, 0.3);
-  --heatmap-3: rgba(217, 119, 87, 0.5);
-  --heatmap-4: #d97757;
+  --heatmap-0: #282828;
+  --heatmap-1: #3c3c3c;
+  --heatmap-2: #565656;
+  --heatmap-3: #7b7b7b;
+  --heatmap-4: #b8b8b8;
 }
 
 /* ===== Light theme ===== */
@@ -79,40 +79,40 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  --bg: #f5f4ed;
-  --surface: #faf9f5;
-  --surface-hover: #f0eee6;
-  --card: #ffffff;
+  --bg: #ffffff;
+  --surface: #f5f5f7;
+  --surface-hover: #ededf0;
+  --card: #f5f5f7;
   --input-bg: #ffffff;
 
-  --border: #e8e6dc;
-  --border-subtle: #f0eee6;
-  --border-hover: #d1cfc5;
+  --border: #e5e5e7;
+  --border-subtle: #ededf0;
+  --border-hover: #c7c7cc;
 
-  --accent: #c96442;
-  --accent-dim: rgba(201, 100, 66, 0.12);
-  --accent-glow: rgba(201, 100, 66, 0.25);
-  --accent-hover: #b85838;
-  --accent-active: #a04830;
-  --accent-soft: rgba(201, 100, 66, 0.08);
-  --text-on-accent: #faf9f5;
+  --accent: #1d1d1f;
+  --accent-dim: rgba(29, 29, 31, 0.1);
+  --accent-glow: rgba(29, 29, 31, 0.14);
+  --accent-hover: #353537;
+  --accent-active: #000000;
+  --accent-soft: rgba(29, 29, 31, 0.06);
+  --text-on-accent: #ffffff;
 
-  --toggle-bg: #d1cfc5;
-  --toggle-active: #c96442;
+  --toggle-bg: #c7c7cc;
+  --toggle-active: #1d1d1f;
 
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-card: none;
 
-  --text: #1a1a18;
-  --text-dim: #5e5d59;
-  --text-muted: #87867f;
+  --text: #1d1d1f;
+  --text-dim: #6e6e73;
+  --text-muted: #86868b;
 
-  --success: #5a8a4a;
-  --warning: #b8863a;
-  --error: #b05040;
+  --success: #3a3a3c;
+  --warning: #77777c;
+  --error: #a1a1a6;
 
-  --glow-success: rgba(90, 138, 74, 0.2);
-  --glow-warning: rgba(184, 134, 58, 0.2);
-  --glow-error: rgba(176, 80, 64, 0.2);
+  --glow-success: transparent;
+  --glow-warning: transparent;
+  --glow-error: transparent;
 
   --fill-subtle: rgba(0, 0, 0, 0.02);
   --fill-hover: rgba(0, 0, 0, 0.03);
@@ -122,18 +122,18 @@
   --scrollbar-thumb: rgba(0, 0, 0, 0.12);
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.2);
 
-  --tag-bg: rgba(201, 100, 66, 0.06);
-  --tag-border: rgba(201, 100, 66, 0.12);
-  --tag-match-bg: rgba(201, 100, 66, 0.12);
-  --tag-hover-bg: rgba(201, 100, 66, 0.1);
-  --tag-hover-border: rgba(201, 100, 66, 0.2);
+  --tag-bg: rgba(29, 29, 31, 0.06);
+  --tag-border: rgba(29, 29, 31, 0.12);
+  --tag-match-bg: rgba(29, 29, 31, 0.1);
+  --tag-hover-bg: rgba(29, 29, 31, 0.08);
+  --tag-hover-border: rgba(29, 29, 31, 0.18);
 
-  --sidebar-bg: #ffffff;
-  --sidebar-active-bg: rgba(201, 100, 66, 0.08);
+  --sidebar-bg: #f5f5f7;
+  --sidebar-active-bg: rgba(29, 29, 31, 0.06);
 
-  --heatmap-0: #ededeb;
-  --heatmap-1: rgba(201, 100, 66, 0.18);
-  --heatmap-2: rgba(201, 100, 66, 0.38);
-  --heatmap-3: rgba(201, 100, 66, 0.58);
-  --heatmap-4: #c96442;
+  --heatmap-0: #ededf0;
+  --heatmap-1: #d8d8dc;
+  --heatmap-2: #b8b8bd;
+  --heatmap-3: #85858b;
+  --heatmap-4: #3a3a3c;
 }

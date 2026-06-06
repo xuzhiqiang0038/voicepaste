@@ -1,8 +1,21 @@
 const path = require("node:path");
-const { BrowserWindow, screen, shell } = require("electron");
+const { app, BrowserWindow, screen, shell } = require("electron");
 
 const OVERLAY_WIDTH = 720;
 const OVERLAY_HEIGHT = 300;
+
+function getAppIconPath() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "icon.png");
+  }
+
+  return path.join(
+    __dirname,
+    "..",
+    "build",
+    process.platform === "win32" ? "icon.ico" : "icon.png",
+  );
+}
 
 function getOverlayBounds() {
   const display = screen.getPrimaryDisplay();
@@ -60,14 +73,19 @@ function createOverlayWindow() {
 }
 
 function createSettingsWindow() {
+  const workArea = screen.getPrimaryDisplay().workArea;
+  const width = Math.max(760, Math.min(1500, workArea.width - 48));
+  const height = Math.max(680, Math.min(1000, workArea.height - 48));
   const win = new BrowserWindow({
-    width: 860,
-    height: 760,
+    width,
+    height,
     minWidth: 760,
     minHeight: 680,
+    center: true,
     show: false,
     frame: true,
     title: "VoicePaste 配置",
+    icon: getAppIconPath(),
     backgroundColor: "#000000",
     autoHideMenuBar: true,
     webPreferences: {

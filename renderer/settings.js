@@ -7,7 +7,7 @@
   let currentHotkeyMode = "toggle";
   let currentLlmProvider = "deepseek";
   let hasAutoCheckedUpdates = false;
-  let homeRefreshTimer = null;
+  let statsRefreshTimer = null;
 
   const LLM_PROVIDERS = {
     deepseek: {
@@ -422,7 +422,7 @@
       }
 
       el.versionText.textContent = data.runtime?.version ? `v${data.runtime.version}` : "-";
-      document.title = data.runtime?.version ? `VoicePaste v${data.runtime.version}` : "VoicePaste";
+      document.title = "VoicePaste";
 
       clearDirty();
       autoCheckUpdatesOnce();
@@ -871,9 +871,13 @@
     document.querySelectorAll(".nav-item[data-section]").forEach((n) => {
       n.classList.toggle("active", n.dataset.section === id);
     });
+    document.querySelector(".main-inner").dataset.section = id;
 
     if (id === "home") {
       loadHomeData();
+    }
+    if (id === "stats") {
+      loadStatsData();
     }
     if (id === "yaml") {
       syncFormToYaml();
@@ -886,24 +890,63 @@
 
   let _historyDaysBack = 3;
 
-  function formatCompact(n) {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-    return String(n);
+  function setText(id, value) {
+    const element = $(id);
+    if (element) element.textContent = value;
+  }
+
+  function formatNumber(value) {
+    return Math.max(0, Number(value || 0)).toLocaleString("zh-CN");
+  }
+
+  function formatCharacters(value) {
+    return `${formatNumber(value)} 字`;
+  }
+
+  function formatSessions(value) {
+    return `${formatNumber(value)} 次`;
   }
 
   function todayKey() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return dateKeyFromDate(new Date());
+  }
+
+  function dateKeyFromDate(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
 
   function formatDurationMs(totalMs) {
-    const s = Math.round(Number(totalMs || 0) / 1000);
-    if (s < 60) return `${s}s`;
-    const m = Math.floor(s / 60);
-    if (m < 60) return `${m}分`;
-    const h = s / 3600;
-    return h < 10 ? `${h.toFixed(1)}h` : `${Math.round(h)}h`;
+    const totalSeconds = Math.max(0, Math.round(Number(totalMs || 0) / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const parts = [];
+
+    if (hours > 0) parts.push(`${hours} 小时`);
+    if (minutes > 0) parts.push(`${minutes} 分`);
+    if (seconds > 0 || parts.length === 0) parts.push(`${seconds} 秒`);
+    return parts.join(" ");
+  }
+
+  function formatDurationSummaryMs(totalMs) {
+    const totalSeconds = Math.max(0, Math.round(Number(totalMs || 0) / 1000));
+    if (totalSeconds < 60) return `${totalSeconds} 秒`;
+
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const parts = [];
+
+    if (hours > 0) parts.push(`${hours} 小时`);
+    if (minutes > 0) parts.push(`${minutes} 分`);
+    return parts.join(" ");
+  }
+
+  function setDurationMetric(id, durationMs) {
+    const element = $(id);
+    if (!element) return;
+
+    element.textContent = formatDurationSummaryMs(durationMs);
+    element.title = formatDurationMs(durationMs);
   }
 
   function renderGreeting() {
@@ -914,39 +957,54 @@
     if (el) el.textContent = g;
   }
 
-  function renderAchievements(stats) {
-    const daysUsed = stats.dailyCounts ? Object.keys(stats.dailyCounts).length : 0;
+  function renderCoreStats(stats) {
+    const key = todayKey();
+    const todayDuration = stats?.dailyDurations?.[key] || 0;
+    const todayCharacters = stats?.dailyCounts?.[key] || 0;
+    const todaySessions = stats?.dailySessions?.[key] || 0;
+    const totalDuration = stats?.totalDurationMs || 0;
+    const totalCharacters = stats?.totalCharacters || 0;
 
-    const daysEl = $("achDaysUsed");
-    const sessionsEl = $("achSessions");
-    const charsEl = $("achCharacters");
-    const timeEl = $("achTimeSaved");
+    setDurationMetric("homeTodayDuration", todayDuration);
+    setText("homeTodayCharacters", formatCharacters(todayCharacters));
+    setDurationMetric("homeTotalDuration", totalDuration);
+    setText("homeTotalCharacters", formatCharacters(totalCharacters));
+    setText("homeTodaySessions", formatSessions(todaySessions));
+    setText("homeTotalSessions", formatSessions(stats?.totalSessions || 0));
+    setText("homeActiveDays", `${formatNumber(stats?.activeDays || 0)} 天`);
 
-    if (daysEl) daysEl.textContent = formatCompact(daysUsed);
-    if (sessionsEl) sessionsEl.textContent = formatCompact(stats.totalSessions || 0);
-    if (charsEl) charsEl.textContent = formatCompact(stats.totalCharacters || 0);
-
-    if (timeEl) timeEl.textContent = formatDurationMs(stats.totalDurationMs || 0);
+    setDurationMetric("statsTodayDuration", todayDuration);
+    setText("statsTodayCharacters", formatCharacters(todayCharacters));
+    setDurationMetric("statsTotalDuration", totalDuration);
+    setText("statsTotalCharacters", formatCharacters(totalCharacters));
   }
 
   function renderHeatmap(stats) {
     const grid = $("heatmapGrid");
     const monthsEl = $("heatmapMonths");
-    const totalEl = $("heatmapTotal");
-    const todayDurationEl = $("heatmapTodayDuration");
+    const chart = $("heatmapChart");
+    const tooltip = $("heatmapTooltip");
     const dailyCounts = stats?.dailyCounts || {};
-    if (!grid) return;
+    const dailyDurations = stats?.dailyDurations || {};
+    const dailySessions = stats?.dailySessions || {};
+    if (!grid || !chart || !tooltip) return;
 
     grid.innerHTML = "";
     if (monthsEl) monthsEl.innerHTML = "";
 
-    const weeks = 26;
+    const weeks = 52;
     const now = new Date();
     const startDate = new Date(now);
     startDate.setDate(startDate.getDate() - startDate.getDay());
     startDate.setDate(startDate.getDate() - (weeks - 1) * 7);
 
-    const allCounts = Object.values(dailyCounts || {}).filter((c) => c > 0);
+    const visibleKeys = [];
+    for (let i = 0; i < weeks * 7; i += 1) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      if (date <= now) visibleKeys.push(dateKeyFromDate(date));
+    }
+    const allCounts = visibleKeys.map((key) => dailyCounts[key] || 0).filter((count) => count > 0);
     allCounts.sort((a, b) => a - b);
 
     function getLevel(count) {
@@ -961,9 +1019,25 @@
       return 4;
     }
 
-    let totalChars = 0;
-    const monthPositions = {};
-    let currentMonth = -1;
+    function showTooltip(cell, date, count, duration, sessions) {
+      tooltip.innerHTML =
+        `<strong>${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日</strong>` +
+        `<span>输入 ${formatCharacters(count)}</span>` +
+        `<span>录音 ${formatDurationMs(duration)}</span>` +
+        `<span>共 ${formatSessions(sessions)}</span>`;
+      tooltip.classList.add("visible");
+
+      const chartRect = chart.getBoundingClientRect();
+      const cellRect = cell.getBoundingClientRect();
+      const preferredLeft = cellRect.left - chartRect.left + cellRect.width / 2;
+      const halfWidth = tooltip.offsetWidth / 2;
+      const left = Math.min(
+        chart.clientWidth - halfWidth - 8,
+        Math.max(halfWidth + 8, preferredLeft),
+      );
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${cellRect.top - chartRect.top - 10}px`;
+    }
 
     for (let w = 0; w < weeks; w++) {
       for (let d = 0; d < 7; d++) {
@@ -972,63 +1046,56 @@
 
         const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
         const count = dailyCounts[key] || 0;
-        totalChars += count;
 
-        const cell = document.createElement("div");
+        const cell = document.createElement("button");
+        cell.type = "button";
         if (date > now) {
-          cell.className = "heatmap-cell";
-          cell.style.visibility = "hidden";
+          cell.className = "heatmap-cell future";
+          cell.disabled = true;
         } else {
           cell.className = `heatmap-cell level-${getLevel(count)}`;
-          cell.title = `${date.getMonth() + 1}月${date.getDate()}日: ${count} 字`;
+          const duration = dailyDurations[key] || 0;
+          const sessions = dailySessions[key] || 0;
+          cell.setAttribute(
+            "aria-label",
+            `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日，输入 ${formatCharacters(count)}，录音 ${formatDurationMs(duration)}，共 ${formatSessions(sessions)}`,
+          );
+          cell.addEventListener("pointerenter", () =>
+            showTooltip(cell, date, count, duration, sessions),
+          );
+          cell.addEventListener("focus", () => showTooltip(cell, date, count, duration, sessions));
+          cell.addEventListener("pointerleave", () => tooltip.classList.remove("visible"));
+          cell.addEventListener("blur", () => tooltip.classList.remove("visible"));
         }
         grid.appendChild(cell);
-
-        const m = date.getMonth();
-        if (m !== currentMonth && d === 0) {
-          monthPositions[m] = w;
-          currentMonth = m;
-        }
       }
     }
 
-    const monthNames = [
-      "1月",
-      "2月",
-      "3月",
-      "4月",
-      "5月",
-      "6月",
-      "7月",
-      "8月",
-      "9月",
-      "10月",
-      "11月",
-      "12月",
-    ];
-    const cellSize = 14;
-    const rendered = {};
     if (monthsEl) {
-      for (let mw = 0; mw < weeks; mw++) {
-        for (const mKey in monthPositions) {
-          if (monthPositions[mKey] === mw && !rendered[mKey]) {
-            const label = document.createElement("span");
-            label.className = "heatmap-month-label";
-            label.style.left = `${mw * cellSize}px`;
-            label.textContent = monthNames[mKey];
-            monthsEl.appendChild(label);
-            rendered[mKey] = true;
+      for (let w = 0; w < weeks; w++) {
+        const weekStart = new Date(startDate);
+        weekStart.setDate(weekStart.getDate() + w * 7);
+        let labelDate = null;
+        if (w === 0) {
+          labelDate = weekStart;
+        } else {
+          for (let d = 0; d < 7; d++) {
+            const date = new Date(weekStart);
+            date.setDate(date.getDate() + d);
+            if (date.getDate() === 1 && date <= now) {
+              labelDate = date;
+              break;
+            }
           }
         }
-      }
-    }
+        if (!labelDate) continue;
 
-    if (totalEl) {
-      totalEl.innerHTML = `共输入 <strong>${totalChars.toLocaleString()}</strong> 字`;
-    }
-    if (todayDurationEl) {
-      const duration = stats?.dailyDurations?.[todayKey()] || 0;
-      todayDurationEl.innerHTML = `今日录音 <strong>${formatDurationMs(duration)}</strong>`;
+        const label = document.createElement("span");
+        label.className = "heatmap-month-label";
+        label.style.left = `${(w / weeks) * 100}%`;
+        label.textContent = `${labelDate.getMonth() + 1}月`;
+        monthsEl.appendChild(label);
+      }
     }
   }
 
@@ -1078,8 +1145,8 @@
       row.innerHTML =
         `<div class="history-head"><span class="history-time">${time}${meta}</span>` +
         '<div class="history-actions">' +
-        `<button type="button" class="history-action" data-action="copy" title="复制">${icon("copy")}</button>` +
-        `<button type="button" class="history-action danger" data-action="delete" title="删除">${icon("trash-2")}</button>` +
+        `<button type="button" class="history-action" data-action="copy" title="复制" aria-label="复制这条记录">${icon("copy")}</button>` +
+        `<button type="button" class="history-action danger" data-action="delete" title="删除" aria-label="删除这条记录">${icon("trash-2")}</button>` +
         "</div></div>" +
         `<div class="history-text">${escapeHtml(item.text)}</div>`;
 
@@ -1107,9 +1174,10 @@
       container.appendChild(row);
     }
 
-    const moreBtn = document.createElement("div");
+    const moreBtn = document.createElement("button");
+    moreBtn.type = "button";
     moreBtn.className = "history-more";
-    moreBtn.innerHTML = "<span>加载更多</span>";
+    moreBtn.textContent = "加载更多";
     moreBtn.addEventListener("click", () => {
       _historyDaysBack += 3;
       loadHistory(_historyDaysBack);
@@ -1131,8 +1199,7 @@
 
     try {
       const stats = await window.voiceSettings.getStats();
-      renderAchievements(stats);
-      renderHeatmap(stats);
+      renderCoreStats(stats);
     } catch (_err) {
       /* ignore */
     }
@@ -1141,16 +1208,28 @@
     await loadHistory(_historyDaysBack);
   }
 
-  function isHomeVisible() {
-    return !document.getElementById("section-home")?.classList.contains("hidden");
+  async function loadStatsData() {
+    try {
+      const stats = await window.voiceSettings.getStats();
+      renderCoreStats(stats);
+      renderHeatmap(stats);
+    } catch (_err) {
+      /* ignore */
+    }
   }
 
-  function scheduleHomeRefresh() {
-    if (!isHomeVisible()) return;
-    if (homeRefreshTimer) clearTimeout(homeRefreshTimer);
-    homeRefreshTimer = setTimeout(() => {
-      homeRefreshTimer = null;
-      loadHomeData();
+  function scheduleStatsRefresh() {
+    const currentSection = document.querySelector(".main-inner")?.dataset.section;
+    if (currentSection !== "home" && currentSection !== "stats") return;
+    if (statsRefreshTimer) clearTimeout(statsRefreshTimer);
+    statsRefreshTimer = setTimeout(() => {
+      statsRefreshTimer = null;
+      const visibleSection = document.querySelector(".main-inner")?.dataset.section;
+      if (visibleSection === "home") {
+        loadHomeData();
+      } else if (visibleSection === "stats") {
+        loadStatsData();
+      }
     }, 150);
   }
 
@@ -1183,6 +1262,14 @@ SOFTWARE.`;
   // Navigation
   document.querySelectorAll(".nav-item[data-section]").forEach((item) => {
     item.addEventListener("click", () => switchSection(item.dataset.section));
+  });
+
+  $("statsDetailsToggle")?.addEventListener("click", (event) => {
+    const button = event.currentTarget;
+    const panel = $("statsDetailsPanel");
+    const expanded = button.getAttribute("aria-expanded") === "true";
+    button.setAttribute("aria-expanded", String(!expanded));
+    panel.hidden = expanded;
   });
 
   // Theme buttons
@@ -1570,7 +1657,7 @@ SOFTWARE.`;
       setUpdateState(event.payload.type, event.payload);
     }
     if (event.type === "stats-updated") {
-      scheduleHomeRefresh();
+      scheduleStatsRefresh();
     }
   });
 
