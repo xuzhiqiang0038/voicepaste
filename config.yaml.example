@@ -68,4 +68,34 @@ llm:
   enabled: false              # 启用 LLM 文本润色
   provider: deepseek          # deepseek / openai / anthropic / gemini / openrouter / siliconflow / ollama / openai_compatible
   deepseek:
-    u
+    url: ""                   # 内置默认地址，可留空
+    api_key: ""
+    model: deepseek-v4-flash
+  openai:
+    url: ""                   # 内置默认地址，可留空
+    api_key: ""
+    model: gpt-4o-mini
+  anthropic:
+    url: ""                   # Anthropic 原生协议可留空
+    api_key: ""
+    model: claude-3-5-haiku-latest
+  gemini:
+    url: ""                   # 内置默认地址，可留空
+    api_key: ""
+    model: gemini-2.5-flash-lite
+  openrouter:
+    url: https://openrouter.ai/api/v1
+    api_key: ""
+    model: openai/gpt-4o-mini
+  siliconflow:
+    url: https://api.siliconflow.cn/v1
+    api_key: ""
+    model: deepseek-ai/DeepSeek-V3
+  ollama:
+    url: http://localhost:11434/api
+    api_key: ""
+    model: llama3.1
+  openai_compatible:
+    url: ""
+    api_key: ""
+    model: ""

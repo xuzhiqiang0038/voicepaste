@@ -1545,4 +1545,21 @@ process.on("uncaughtException", (error) => {
 });
 
 process.on("unhandledRejection", (error) => {
-  logEr
+  logError("unhandled rejection", {
+    message: error?.message || String(error),
+  });
+});
+
+app.on("before-quit", () => {
+  isQuitting = true;
+  if (tray) {
+    tray.destroy();
+    tray = null;
+  }
+});
+
+app.on("will-quit", () => {
+  logInfo("app will quit");
+  globalShortcut.unregisterAll();
+  closeLogger();
+});

@@ -225,4 +225,46 @@ body {
 }
 
 .stage[data-state="recording"] .status-bars[data-active="true"] {
-  op
+  opacity: 1;
+}
+
+.status-bar {
+  width: 3px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--waveform);
+  opacity: 1;
+  transform-origin: center center;
+  transition:
+    height 0.16s ease-out,
+    transform 0.16s ease-out;
+}
+
+.stage[data-mode="transcript"] .hint {
+  display: none;
+}
+
+.measure-text {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: none;
+  font-family: var(--transcript-font-family);
+  font-size: var(--transcript-font-size);
+  line-height: 1.35;
+  font-weight: var(--transcript-font-weight);
+  letter-spacing: 0;
+}
+
+@keyframes progress-slide {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(322%);
+  }
+}

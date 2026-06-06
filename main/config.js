@@ -333,4 +333,56 @@ function getOverlayAppearance() {
     background_color: String(overlay.background_color ?? OVERLAY_DEFAULTS.background_color),
     background_opacity: Number(overlay.background_opacity ?? OVERLAY_DEFAULTS.background_opacity),
     border_color: String(overlay.border_color ?? OVERLAY_DEFAULTS.border_color),
-    border_width: Number(overlay.border_width ?? OVERLAY_DEFAULTS.bo
+    border_width: Number(overlay.border_width ?? OVERLAY_DEFAULTS.border_width),
+    border_radius: Number(overlay.border_radius ?? OVERLAY_DEFAULTS.border_radius),
+    font_family: String(overlay.font_family ?? OVERLAY_DEFAULTS.font_family),
+    font_size: Number(overlay.font_size ?? OVERLAY_DEFAULTS.font_size),
+    font_weight: Number(overlay.font_weight ?? OVERLAY_DEFAULTS.font_weight),
+    text_color: String(overlay.text_color ?? OVERLAY_DEFAULTS.text_color),
+    partial_text_color: String(overlay.partial_text_color ?? OVERLAY_DEFAULTS.partial_text_color),
+    partial_text_opacity: Number(overlay.partial_text_opacity ?? OVERLAY_DEFAULTS.partial_text_opacity),
+    waveform_color: String(overlay.waveform_color ?? OVERLAY_DEFAULTS.waveform_color),
+    max_width: Number(overlay.max_width ?? OVERLAY_DEFAULTS.max_width),
+  };
+}
+
+function saveConfig(nextConfig) {
+  const yaml = YAML.stringify(nextConfig, {
+    indent: 2,
+    lineWidth: 0,
+  });
+  fs.writeFileSync(CONFIG_PATH, yaml, "utf8");
+}
+
+function saveConfigText(text) {
+  YAML.parse(text);
+  fs.writeFileSync(CONFIG_PATH, text, "utf8");
+}
+
+function getConfigExamplePath() {
+  return resolveConfigExamplePath();
+}
+
+function resetConfigToDefault() {
+  const examplePath = getConfigExamplePath();
+  if (!examplePath) {
+    throw new Error("未找到 config.yaml.example");
+  }
+
+  const content = fs.readFileSync(examplePath, "utf8");
+  fs.writeFileSync(CONFIG_PATH, content, "utf8");
+}
+
+module.exports = {
+  CONFIG_PATH,
+  PROMPTS_PATH,
+  getEditableConfig,
+  getOverlayAppearance,
+  loadConfig,
+  loadPrompts,
+  readConfigFile,
+  resetConfigToDefault,
+  saveConfig,
+  saveConfigText,
+  savePrompts,
+};
