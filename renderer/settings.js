@@ -7,6 +7,7 @@
   let currentHotkeyMode = "toggle";
   let currentLlmProvider = "deepseek";
   let hasAutoCheckedUpdates = false;
+  let homeRefreshTimer = null;
 
   const LLM_PROVIDERS = {
     deepseek: {
@@ -891,11 +892,16 @@
     return String(n);
   }
 
-  function formatDuration(totalSeconds) {
-    const s = Math.round(totalSeconds);
+  function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  function formatDurationMs(totalMs) {
+    const s = Math.round(Number(totalMs || 0) / 1000);
     if (s < 60) return `${s}s`;
     const m = Math.floor(s / 60);
-    if (m < 60) return `${m}m`;
+    if (m < 60) return `${m}分`;
     const h = s / 3600;
     return h < 10 ? `${h.toFixed(1)}h` : `${Math.round(h)}h`;
   }
@@ -920,14 +926,15 @@
     if (sessionsEl) sessionsEl.textContent = formatCompact(stats.totalSessions || 0);
     if (charsEl) charsEl.textContent = formatCompact(stats.totalCharacters || 0);
 
-    const secondsSaved = Math.round((stats.totalCharacters || 0) * 0.67);
-    if (timeEl) timeEl.textContent = formatDuration(secondsSaved);
+    if (timeEl) timeEl.textContent = formatDurationMs(stats.totalDurationMs || 0);
   }
 
-  function renderHeatmap(dailyCounts) {
+  function renderHeatmap(stats) {
     const grid = $("heatmapGrid");
     const monthsEl = $("heatmapMonths");
     const totalEl = $("heatmapTotal");
+    const todayDurationEl = $("heatmapTodayDuration");
+    const dailyCounts = stats?.dailyCounts || {};
     if (!grid) return;
 
     grid.innerHTML = "";
@@ -1019,6 +1026,10 @@
     if (totalEl) {
       totalEl.innerHTML = `共输入 <strong>${totalChars.toLocaleString()}</strong> 字`;
     }
+    if (todayDurationEl) {
+      const duration = stats?.dailyDurations?.[todayKey()] || 0;
+      todayDurationEl.innerHTML = `今日录音 <strong>${formatDurationMs(duration)}</strong>`;
+    }
   }
 
   function renderHistory(items) {
@@ -1028,7 +1039,7 @@
 
     if (!items || items.length === 0) {
       container.innerHTML =
-        '<div class="history-item"><span style="color:var(--text-muted);font-size:12px">暂无输入记录</span></div>';
+        '<div class="history-empty"><span style="color:var(--text-muted);font-size:12px">暂无输入记录</span></div>';
       return;
     }
 
@@ -1062,7 +1073,37 @@
       const row = document.createElement("div");
       row.className = "history-item";
       const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-      row.innerHTML = `<span class="history-time">${time}</span><div class="history-content"><div class="history-text">${escapeHtml(item.text)}</div></div>`;
+
+      const meta = item.durationMs ? ` · ${formatDurationMs(item.durationMs)}` : "";
+      row.innerHTML =
+        `<div class="history-head"><span class="history-time">${time}${meta}</span>` +
+        '<div class="history-actions">' +
+        `<button type="button" class="history-action" data-action="copy" title="复制">${icon("copy")}</button>` +
+        `<button type="button" class="history-action danger" data-action="delete" title="删除">${icon("trash-2")}</button>` +
+        "</div></div>" +
+        `<div class="history-text">${escapeHtml(item.text)}</div>`;
+
+      const copyBtn = row.querySelector('[data-action="copy"]');
+      const deleteBtn = row.querySelector('[data-action="delete"]');
+
+      copyBtn?.addEventListener("click", async () => {
+        await window.voiceSettings.copyText(item.text || "");
+        copyBtn.classList.add("is-done");
+        copyBtn.title = "已复制";
+        setTimeout(() => {
+          copyBtn.classList.remove("is-done");
+          copyBtn.title = "复制";
+        }, 1200);
+      });
+
+      deleteBtn?.addEventListener("click", async () => {
+        if (!confirm("确定删除这条输入记录吗？")) return;
+        const result = await window.voiceSettings.deleteHistoryItem(item.id);
+        if (result?.ok) {
+          await loadHomeData();
+        }
+      });
+
       container.appendChild(row);
     }
 
@@ -1091,13 +1132,26 @@
     try {
       const stats = await window.voiceSettings.getStats();
       renderAchievements(stats);
-      renderHeatmap(stats.dailyCounts || {});
+      renderHeatmap(stats);
     } catch (_err) {
       /* ignore */
     }
 
     _historyDaysBack = 3;
     await loadHistory(_historyDaysBack);
+  }
+
+  function isHomeVisible() {
+    return !document.getElementById("section-home")?.classList.contains("hidden");
+  }
+
+  function scheduleHomeRefresh() {
+    if (!isHomeVisible()) return;
+    if (homeRefreshTimer) clearTimeout(homeRefreshTimer);
+    homeRefreshTimer = setTimeout(() => {
+      homeRefreshTimer = null;
+      loadHomeData();
+    }, 150);
   }
 
   // ===== License =====
@@ -1514,6 +1568,9 @@ SOFTWARE.`;
     }
     if (event.type === "update-status") {
       setUpdateState(event.payload.type, event.payload);
+    }
+    if (event.type === "stats-updated") {
+      scheduleHomeRefresh();
     }
   });
 

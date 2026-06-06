@@ -11,6 +11,7 @@ const {
   dialog,
   shell,
   nativeTheme,
+  clipboard,
 } = require("electron");
 const {
   createOverlayWindow,
@@ -32,7 +33,13 @@ const { createAsrSession } = require("./asrService");
 const { pasteTextToFocusedElement } = require("./pasteService");
 const { structureText } = require("./llmService");
 const { logInfo, logError, resolveLogPath, closeLogger } = require("./logger");
-const { initStatsService, recordSession, getStats, getHistory } = require("./statsService");
+const {
+  initStatsService,
+  recordSession,
+  getStats,
+  getHistory,
+  deleteHistoryItem,
+} = require("./statsService");
 const { uIOhook, UiohookKey } = require("uiohook-napi");
 const {
   initUpdateService,
@@ -549,6 +556,7 @@ let pendingSoundPlayedResolve = null;
 let isQuitting = false;
 let wsReady = false;
 let audioWarmupReady = false;
+let recordingStartedAt = 0;
 
 function getHotkey() {
   return currentConfig.app.hotkey;
@@ -629,6 +637,17 @@ function sendOverlayMessage(type, payload = {}) {
   });
 }
 
+function sendSettingsMessage(type, payload = {}) {
+  if (!settingsWindow || settingsWindow.isDestroyed()) {
+    return;
+  }
+
+  settingsWindow.webContents.send("settings:event", {
+    type,
+    payload,
+  });
+}
+
 function resetTranscript() {
   latestTranscript = {
     finalText: "",
@@ -663,6 +682,11 @@ function hideOverlay() {
 
 function setState(nextState) {
   appState = nextState;
+  if (nextState === "recording") {
+    recordingStartedAt = Date.now();
+  } else if (nextState === "idle" || nextState === "error") {
+    recordingStartedAt = 0;
+  }
   logInfo("state changed", { state: nextState });
   syncEscapeShortcut();
   sendOverlayMessage("state", { state: nextState });
@@ -874,6 +898,7 @@ async function finishRecordingFlow() {
   }
 
   logInfo("finish recording flow");
+  const durationMs = recordingStartedAt ? Math.max(0, Date.now() - recordingStartedAt) : 0;
 
   if (!asrSession?.isReady()) {
     logError("finish failed because asr not ready");
@@ -971,7 +996,8 @@ async function finishRecordingFlow() {
     setState("idle");
     activeSessionPromptId = null;
 
-    recordSession(textToPaste);
+    const historyEntry = recordSession(textToPaste, { durationMs });
+    sendSettingsMessage("stats-updated", { historyId: historyEntry?.id });
   } catch (error) {
     activeSessionPromptId = null;
     logError("finish recording flow failed", { message: error.message || String(error) });
@@ -1435,6 +1461,15 @@ app.whenReady().then(() => {
 
   ipcMain.handle("stats:get-history", async (_event, daysBack) => {
     return getHistory(daysBack || 3);
+  });
+
+  ipcMain.handle("stats:delete-history-item", async (_event, id) => {
+    return deleteHistoryItem(String(id || ""));
+  });
+
+  ipcMain.handle("settings:copy-text", async (_event, text) => {
+    clipboard.writeText(String(text || ""));
+    return { ok: true };
   });
 
   ipcMain.handle("prompts:load", () => {

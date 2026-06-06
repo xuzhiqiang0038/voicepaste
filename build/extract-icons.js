@@ -26,6 +26,8 @@ const ICONS = [
   "Monitor",
   "Eye",
   "EyeOff",
+  "Copy",
+  "Trash2",
   "RefreshCw",
   "X",
   "CircleDot",
@@ -67,7 +69,7 @@ for (const name of ICONS) {
     continue;
   }
   const kebab = name
-    .replace(/([A-Z])/g, (m, p, i) => (i ? "-" : "") + p.toLowerCase())
+    .replace(/([A-Z])/g, (_m, p, i) => (i ? "-" : "") + p.toLowerCase())
     .replace(/(\d+)/g, "-$1");
   entries.push(`  "${kebab}": '${toSvgString(iconData)}'`);
 }

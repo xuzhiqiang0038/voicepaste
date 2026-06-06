@@ -1152,38 +1152,85 @@ kbd {
 /* ===== Home: History ===== */
 
 .history-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 18px;
-  min-height: 40px;
+  display: block;
+  margin: 12px 14px;
+  padding: 16px 18px 18px;
   transition: background 0.2s ease;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--card);
 }
 
 .history-item:hover {
   background: var(--sidebar-active-bg);
 }
 
+.history-empty {
+  padding: 14px 18px;
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .history-time {
   font-size: 11px;
   font-family: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
   color: var(--text-muted);
-  flex-shrink: 0;
-  width: 38px;
+  line-height: 1;
 }
 
-.history-content {
-  flex: 1;
-  min-width: 0;
+.history-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.history-action {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.history-action:hover,
+.history-action.is-done {
+  color: var(--text);
+  background: var(--fill-hover);
+  border-color: var(--border);
+}
+
+.history-action.danger:hover {
+  color: var(--accent);
+}
+
+.history-action svg {
+  width: 15px;
+  height: 15px;
 }
 
 .history-text {
-  font-size: 13px;
-  color: var(--text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.4;
+  font-size: 14px;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.75;
 }
 
 .history-date-divider {
@@ -1191,7 +1238,7 @@ kbd {
   align-items: center;
   gap: 10px;
   padding: 0 18px;
-  margin-top: -1px;
+  margin-top: 16px;
 }
 
 .history-date-divider:first-child {
@@ -1218,6 +1265,7 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 4px 14px 12px;
   padding: 12px 18px;
   font-size: 12px;
   color: var(--text-muted);

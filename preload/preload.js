@@ -92,6 +92,12 @@ contextBridge.exposeInMainWorld("voiceSettings", {
   getHistory(daysBack) {
     return ipcRenderer.invoke("stats:get-history", daysBack);
   },
+  deleteHistoryItem(id) {
+    return ipcRenderer.invoke("stats:delete-history-item", id);
+  },
+  copyText(text) {
+    return ipcRenderer.invoke("settings:copy-text", text);
+  },
   loadPrompts() {
     return ipcRenderer.invoke("prompts:load");
   },
