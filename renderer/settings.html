@@ -49,6 +49,10 @@
             <span class="nav-icon" data-icon="sparkles"></span>
             <span>文本润色</span>
           </div>
+          <div class="nav-item" data-section="overlay-appearance">
+            <span class="nav-icon" data-icon="paintbrush"></span>
+            <span>浮层外观</span>
+          </div>
           <div class="nav-divider"></div>
           <div class="nav-group-label">高级</div>
           <div class="nav-item" data-section="advanced">
@@ -820,6 +824,173 @@
                 </button>
               </div>
             </div>
+          </section>
+
+          <!-- 浮层外观 -->
+          <section class="section hidden" id="section-overlay-appearance">
+            <div class="section-header">
+              <div>
+                <div class="section-title">浮层外观</div>
+                <div class="section-subtitle">自定义语音输入浮层的视觉样式</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button type="button" class="btn btn-sm" id="overlayResetBtn">恢复默认</button>
+              </div>
+            </div>
+
+            <!-- 背景 -->
+            <div class="section-card">
+              <div class="card-section-title">背景</div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">背景颜色</div>
+                  <div class="desc">气泡的填充颜色</div>
+                </div>
+                <div class="appearance-color-row">
+                  <input type="color" id="oa-background-color" class="color-swatch" />
+                  <span class="color-hex-label" id="oa-background-color-label">#121212</span>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">背景透明度</div>
+                  <div class="desc">0 = 全透明，1 = 不透明</div>
+                </div>
+                <div class="appearance-slider-row">
+                  <input type="range" id="oa-background-opacity" min="0" max="1" step="0.01" />
+                  <span class="slider-value-label" id="oa-background-opacity-label">0.68</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 边框 -->
+            <div class="section-card">
+              <div class="card-section-title">边框</div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">边框颜色</div>
+                </div>
+                <div class="appearance-color-row">
+                  <input type="color" id="oa-border-color" class="color-swatch" />
+                  <span class="color-hex-label" id="oa-border-color-label">#8e8e93</span>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">边框宽度</div>
+                  <div class="desc">px，设为 0 则无边框</div>
+                </div>
+                <div class="appearance-slider-row">
+                  <input type="range" id="oa-border-width" min="0" max="6" step="1" />
+                  <span class="slider-value-label" id="oa-border-width-label">1 px</span>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">圆角半径</div>
+                  <div class="desc">px</div>
+                </div>
+                <div class="appearance-slider-row">
+                  <input type="range" id="oa-border-radius" min="0" max="32" step="1" />
+                  <span class="slider-value-label" id="oa-border-radius-label">16 px</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 文字 -->
+            <div class="section-card">
+              <div class="card-section-title">文字</div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">已识别文字颜色</div>
+                  <div class="desc">转写完成的文字颜色</div>
+                </div>
+                <div class="appearance-color-row">
+                  <input type="color" id="oa-text-color" class="color-swatch" />
+                  <span class="color-hex-label" id="oa-text-color-label">#ffffff</span>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">识别中文字颜色</div>
+                  <div class="desc">正在转写、尚未确认的文字颜色</div>
+                </div>
+                <div class="appearance-color-row">
+                  <input type="color" id="oa-partial-text-color" class="color-swatch" />
+                  <span class="color-hex-label" id="oa-partial-text-color-label">#ffffff</span>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">识别中文字透明度</div>
+                  <div class="desc">0 = 全透明，1 = 不透明</div>
+                </div>
+                <div class="appearance-slider-row">
+                  <input type="range" id="oa-partial-text-opacity" min="0" max="1" step="0.01" />
+                  <span class="slider-value-label" id="oa-partial-text-opacity-label">0.58</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 字体 -->
+            <div class="section-card">
+              <div class="card-section-title">字体</div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">字体名称</div>
+                  <div class="desc">留空使用系统默认字体。例：微软雅黑、PingFang SC、Consolas</div>
+                </div>
+                <input type="text" id="oa-font-family" class="input-field appearance-font-input" placeholder="系统默认" />
+              </div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">字号</div>
+                  <div class="desc">px</div>
+                </div>
+                <div class="appearance-slider-row">
+                  <input type="range" id="oa-font-size" min="10" max="36" step="1" />
+                  <span class="slider-value-label" id="oa-font-size-label">16 px</span>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">字重</div>
+                </div>
+                <select id="oa-font-weight" class="select-input">
+                  <option value="300">300 — 细体</option>
+                  <option value="400">400 — 正常</option>
+                  <option value="500" selected>500 — 中等</option>
+                  <option value="600">600 — 半粗</option>
+                  <option value="700">700 — 粗体</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 其他 -->
+            <div class="section-card">
+              <div class="card-section-title">其他</div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">波形颜色</div>
+                  <div class="desc">录音时底部波形动画的颜色</div>
+                </div>
+                <div class="appearance-color-row">
+                  <input type="color" id="oa-waveform-color" class="color-swatch" />
+                  <span class="color-hex-label" id="oa-waveform-color-label">#000000</span>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-label">
+                  <div class="title">气泡最大宽度</div>
+                  <div class="desc">px</div>
+                </div>
+                <div class="appearance-slider-row">
+                  <input type="range" id="oa-max-width" min="300" max="1200" step="10" />
+                  <span class="slider-value-label" id="oa-max-width-label">680 px</span>
+                </div>
+              </div>
+            </div>
+
           </section>
         </div>
 

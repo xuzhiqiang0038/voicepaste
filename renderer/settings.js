@@ -1661,8 +1661,197 @@ SOFTWARE.`;
     }
   });
 
+  // ===== Overlay Appearance =====
+
+  const OVERLAY_DEFAULTS = {
+    background_color: "#121212",
+    background_opacity: 0.68,
+    border_color: "#8e8e93",
+    border_width: 1,
+    border_radius: 16,
+    font_family: "",
+    font_size: 16,
+    font_weight: 500,
+    text_color: "#ffffff",
+    partial_text_color: "#ffffff",
+    partial_text_opacity: 0.58,
+    waveform_color: "#000000",
+    max_width: 680,
+  };
+
+  let _oaDebounceTimer = null;
+
+  function oaEl(id) {
+    return document.getElementById(id);
+  }
+
+  function rgbToHex(r, g, b) {
+    return `#${[r, g, b]
+      .map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0"))
+      .join("")}`;
+  }
+
+  function normalizeHex(value) {
+    const s = String(value || "").trim();
+    if (/^#[0-9a-f]{6}$/i.test(s)) return s.toLowerCase();
+    if (/^#[0-9a-f]{3}$/i.test(s)) {
+      return `#${s[1]}${s[1]}${s[2]}${s[2]}${s[3]}${s[3]}`.toLowerCase();
+    }
+    const rgba = s.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    if (rgba) return rgbToHex(Number(rgba[1]), Number(rgba[2]), Number(rgba[3]));
+    return "#000000";
+  }
+
+  function readOverlayForm() {
+    return {
+      background_color: oaEl("oa-background-color")?.value || OVERLAY_DEFAULTS.background_color,
+      background_opacity: Number(oaEl("oa-background-opacity")?.value ?? OVERLAY_DEFAULTS.background_opacity),
+      border_color: oaEl("oa-border-color")?.value || OVERLAY_DEFAULTS.border_color,
+      border_width: Number(oaEl("oa-border-width")?.value ?? OVERLAY_DEFAULTS.border_width),
+      border_radius: Number(oaEl("oa-border-radius")?.value ?? OVERLAY_DEFAULTS.border_radius),
+      font_family: (oaEl("oa-font-family")?.value || "").trim(),
+      font_size: Number(oaEl("oa-font-size")?.value ?? OVERLAY_DEFAULTS.font_size),
+      font_weight: Number(oaEl("oa-font-weight")?.value ?? OVERLAY_DEFAULTS.font_weight),
+      text_color: oaEl("oa-text-color")?.value || OVERLAY_DEFAULTS.text_color,
+      partial_text_color: oaEl("oa-partial-text-color")?.value || OVERLAY_DEFAULTS.partial_text_color,
+      partial_text_opacity: Number(oaEl("oa-partial-text-opacity")?.value ?? OVERLAY_DEFAULTS.partial_text_opacity),
+      waveform_color: oaEl("oa-waveform-color")?.value || OVERLAY_DEFAULTS.waveform_color,
+      max_width: Number(oaEl("oa-max-width")?.value ?? OVERLAY_DEFAULTS.max_width),
+    };
+  }
+
+  function setColorField(baseId, hexValue) {
+    const normalized = normalizeHex(hexValue);
+    const input = oaEl(baseId);
+    const label = oaEl(`${baseId}-label`);
+    if (input) input.value = normalized;
+    if (label) label.textContent = normalized;
+  }
+
+  function setSliderField(baseId, value, unit) {
+    const input = oaEl(baseId);
+    const label = oaEl(`${baseId}-label`);
+    if (input) input.value = value;
+    if (label) label.textContent = unit ? `${value} ${unit}` : String(value);
+  }
+
+  function populateOverlayForm(overlay) {
+    const o = { ...OVERLAY_DEFAULTS, ...(overlay || {}) };
+
+    setColorField("oa-background-color", o.background_color);
+    setSliderField("oa-background-opacity", o.background_opacity);
+    const bgOpacityLabel = oaEl("oa-background-opacity-label");
+    if (bgOpacityLabel) bgOpacityLabel.textContent = Number(o.background_opacity).toFixed(2);
+
+    setColorField("oa-border-color", o.border_color);
+    setSliderField("oa-border-width", o.border_width, "px");
+    setSliderField("oa-border-radius", o.border_radius, "px");
+
+    setColorField("oa-text-color", o.text_color);
+    setColorField("oa-partial-text-color", o.partial_text_color);
+    setSliderField("oa-partial-text-opacity", o.partial_text_opacity);
+    const partialOpacityLabel = oaEl("oa-partial-text-opacity-label");
+    if (partialOpacityLabel) partialOpacityLabel.textContent = Number(o.partial_text_opacity).toFixed(2);
+
+    const fontFamilyEl = oaEl("oa-font-family");
+    if (fontFamilyEl) fontFamilyEl.value = o.font_family || "";
+    setSliderField("oa-font-size", o.font_size, "px");
+    const fontWeightEl = oaEl("oa-font-weight");
+    if (fontWeightEl) fontWeightEl.value = String(o.font_weight || 500);
+
+    setColorField("oa-waveform-color", o.waveform_color);
+    setSliderField("oa-max-width", o.max_width, "px");
+  }
+
+  async function saveOverlayAppearance(appearance) {
+    const currentData = await window.voiceSettings.getData().catch(() => null);
+    if (!currentData) return;
+    const nextConfig = { ...(currentData.parsedConfig || {}), overlay: appearance };
+    await window.voiceSettings.saveConfigObject(nextConfig).catch(() => {});
+    await window.voiceSettings.updateAppearance(appearance).catch(() => {});
+  }
+
+  function onOverlayFieldChange() {
+    const appearance = readOverlayForm();
+    window.voiceSettings.updateAppearance(appearance).catch(() => {});
+    if (_oaDebounceTimer) clearTimeout(_oaDebounceTimer);
+    _oaDebounceTimer = setTimeout(() => {
+      _oaDebounceTimer = null;
+      saveOverlayAppearance(appearance);
+    }, 600);
+  }
+
+  function onColorInputChange(colorInputId, labelId) {
+    const input = oaEl(colorInputId);
+    const label = oaEl(labelId);
+    if (input && label) label.textContent = input.value;
+    onOverlayFieldChange();
+  }
+
+  function onSliderChange(sliderId, labelId, unit, decimals) {
+    const input = oaEl(sliderId);
+    const label = oaEl(labelId);
+    if (input && label) {
+      const val = decimals > 0 ? Number(input.value).toFixed(decimals) : input.value;
+      label.textContent = unit ? `${val} ${unit}` : val;
+    }
+    onOverlayFieldChange();
+  }
+
+  function initOverlayAppearance() {
+    const colorFields = [
+      ["oa-background-color", "oa-background-color-label"],
+      ["oa-border-color", "oa-border-color-label"],
+      ["oa-text-color", "oa-text-color-label"],
+      ["oa-partial-text-color", "oa-partial-text-color-label"],
+      ["oa-waveform-color", "oa-waveform-color-label"],
+    ];
+    for (const [inputId, labelId] of colorFields) {
+      oaEl(inputId)?.addEventListener("input", () => onColorInputChange(inputId, labelId));
+    }
+
+    oaEl("oa-background-opacity")?.addEventListener("input", () =>
+      onSliderChange("oa-background-opacity", "oa-background-opacity-label", "", 2),
+    );
+    oaEl("oa-partial-text-opacity")?.addEventListener("input", () =>
+      onSliderChange("oa-partial-text-opacity", "oa-partial-text-opacity-label", "", 2),
+    );
+    oaEl("oa-border-width")?.addEventListener("input", () =>
+      onSliderChange("oa-border-width", "oa-border-width-label", "px", 0),
+    );
+    oaEl("oa-border-radius")?.addEventListener("input", () =>
+      onSliderChange("oa-border-radius", "oa-border-radius-label", "px", 0),
+    );
+    oaEl("oa-font-size")?.addEventListener("input", () =>
+      onSliderChange("oa-font-size", "oa-font-size-label", "px", 0),
+    );
+    oaEl("oa-max-width")?.addEventListener("input", () =>
+      onSliderChange("oa-max-width", "oa-max-width-label", "px", 0),
+    );
+
+    oaEl("oa-font-family")?.addEventListener("input", onOverlayFieldChange);
+    oaEl("oa-font-weight")?.addEventListener("change", onOverlayFieldChange);
+
+    oaEl("overlayResetBtn")?.addEventListener("click", async () => {
+      populateOverlayForm(OVERLAY_DEFAULTS);
+      await saveOverlayAppearance(OVERLAY_DEFAULTS);
+    });
+  }
+
+  async function loadOverlayAppearance() {
+    try {
+      const data = await window.voiceSettings.getData();
+      const overlay = data.parsedConfig?.overlay || {};
+      populateOverlayForm(overlay);
+    } catch (_) {
+      populateOverlayForm(OVERLAY_DEFAULTS);
+    }
+  }
+
   // ===== Init =====
   initIcons();
   loadSettings();
   loadHomeData();
+  initOverlayAppearance();
+  loadOverlayAppearance();
 })();

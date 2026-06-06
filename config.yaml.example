@@ -5,6 +5,21 @@ app:
   keep_clipboard: true           # 保留识别结果在剪贴板，便于失败后手动再次粘贴
   theme: system                  # 外观主题：dark / light / system（跟随系统）
 
+overlay:
+  background_color: "#121212"   # 气泡背景色（十六进制）
+  background_opacity: 0.68      # 气泡背景透明度 0~1
+  border_color: "#8e8e93"       # 边框颜色（十六进制）
+  border_width: 1               # 边框宽度 px，0 = 无边框
+  border_radius: 16             # 圆角半径 px
+  font_family: ""               # 字体名称，留空使用系统默认（微软雅黑等）
+  font_size: 16                 # 字号 px
+  font_weight: 500              # 字重：300 / 400 / 500 / 600 / 700
+  text_color: "#ffffff"         # 已识别文字颜色
+  partial_text_color: "#ffffff" # 识别中文字颜色
+  partial_text_opacity: 0.58    # 识别中文字透明度 0~1
+  waveform_color: "#000000"     # 波形动画颜色
+  max_width: 680                # 气泡最大宽度 px
+
 connection:
   url: wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async
   app_id: ""
@@ -53,34 +68,4 @@ llm:
   enabled: false              # 启用 LLM 文本润色
   provider: deepseek          # deepseek / openai / anthropic / gemini / openrouter / siliconflow / ollama / openai_compatible
   deepseek:
-    url: ""                   # 内置默认地址，可留空
-    api_key: ""
-    model: deepseek-v4-flash
-  openai:
-    url: ""                   # 内置默认地址，可留空
-    api_key: ""
-    model: gpt-4o-mini
-  anthropic:
-    url: ""                   # Anthropic 原生协议可留空
-    api_key: ""
-    model: claude-3-5-haiku-latest
-  gemini:
-    url: ""                   # 内置默认地址，可留空
-    api_key: ""
-    model: gemini-2.5-flash-lite
-  openrouter:
-    url: https://openrouter.ai/api/v1
-    api_key: ""
-    model: openai/gpt-4o-mini
-  siliconflow:
-    url: https://api.siliconflow.cn/v1
-    api_key: ""
-    model: deepseek-ai/DeepSeek-V3
-  ollama:
-    url: http://localhost:11434/api
-    api_key: ""
-    model: llama3.1
-  openai_compatible:
-    url: ""
-    api_key: ""
-    model: ""
+    u

@@ -25,6 +25,7 @@ const {
   readConfigFile,
   saveConfigText,
   getEditableConfig,
+  getOverlayAppearance,
   saveConfig,
   savePrompts,
   resetConfigToDefault,
@@ -1252,7 +1253,15 @@ app.whenReady().then(() => {
 
   ipcMain.handle("app:get-config", () => ({
     hotkey: getHotkey(),
+    overlay: getOverlayAppearance(),
   }));
+
+  ipcMain.handle("overlay:update-appearance", (_event, appearance) => {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.webContents.send("overlay:appearance-changed", appearance);
+    }
+    return { ok: true };
+  });
 
   ipcMain.handle("settings:get-login-item", () => {
     return app.getLoginItemSettings();
@@ -1536,21 +1545,4 @@ process.on("uncaughtException", (error) => {
 });
 
 process.on("unhandledRejection", (error) => {
-  logError("unhandled rejection", {
-    message: error?.message || String(error),
-  });
-});
-
-app.on("before-quit", () => {
-  isQuitting = true;
-  if (tray) {
-    tray.destroy();
-    tray = null;
-  }
-});
-
-app.on("will-quit", () => {
-  logInfo("app will quit");
-  globalShortcut.unregisterAll();
-  closeLogger();
-});
+  logEr

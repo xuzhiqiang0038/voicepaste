@@ -33,6 +33,7 @@ const ICONS = [
   "X",
   "CircleDot",
   "Sparkles",
+  "Paintbrush",
 ];
 
 const attrs = {

@@ -671,6 +671,50 @@ window.addEventListener("beforeunload", () => {
   stopAudioCapture();
 });
 
-window.voiceOverlay.getConfig().then(() => {
+function hexToRgb(hex) {
+  const clean = String(hex || "").replace(/^#/, "");
+  const full = clean.length === 3 ? clean.replace(/./g, (c) => c + c) : clean;
+  const r = Number.parseInt(full.slice(0, 2), 16);
+  const g = Number.parseInt(full.slice(2, 4), 16);
+  const b = Number.parseInt(full.slice(4, 6), 16);
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return "0, 0, 0";
+  return `${r}, ${g}, ${b}`;
+}
+
+function applyOverlayAppearance(overlay) {
+  if (!overlay) return;
+  const root = document.documentElement;
+
+  const bgRgb = hexToRgb(overlay.background_color);
+  const bgOpacity = Number.isFinite(overlay.background_opacity) ? overlay.background_opacity : 0.68;
+  root.style.setProperty("--bubble-bg", `rgba(${bgRgb}, ${bgOpacity})`);
+
+  root.style.setProperty("--bubble-border", overlay.border_color || "#8e8e93");
+  root.style.setProperty("--bubble-border-width", `${overlay.border_width ?? 1}px`);
+  root.style.setProperty("--bubble-border-radius", `${overlay.border_radius ?? 16}px`);
+  root.style.setProperty("--bubble-max-width", `${overlay.max_width ?? 680}px`);
+
+  root.style.setProperty("--text", overlay.text_color || "#ffffff");
+
+  const partialRgb = hexToRgb(overlay.partial_text_color);
+  const partialOpacity = Number.isFinite(overlay.partial_text_opacity) ? overlay.partial_text_opacity : 0.58;
+  root.style.setProperty("--partial-text", `rgba(${partialRgb}, ${partialOpacity})`);
+
+  root.style.setProperty("--waveform", overlay.waveform_color || "#000000");
+
+  const fontFamily = overlay.font_family
+    ? `${overlay.font_family}, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif`
+    : '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", Arial, system-ui, sans-serif';
+  root.style.setProperty("--transcript-font-family", fontFamily);
+  root.style.setProperty("--transcript-font-size", `${overlay.font_size ?? 16}px`);
+  root.style.setProperty("--transcript-font-weight", String(overlay.font_weight ?? 500));
+}
+
+window.voiceOverlay.getConfig().then((config) => {
+  applyOverlayAppearance(config?.overlay);
   updateView();
+});
+
+window.voiceOverlay.onAppearanceChanged((appearance) => {
+  applyOverlayAppearance(appearance);
 });

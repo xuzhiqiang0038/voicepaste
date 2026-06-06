@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld("voiceOverlay", {
   getConfig() {
     return ipcRenderer.invoke("app:get-config");
   },
+  onAppearanceChanged(listener) {
+    const wrapped = (_event, payload) => listener(payload);
+    ipcRenderer.on("overlay:appearance-changed", wrapped);
+    return () => ipcRenderer.removeListener("overlay:appearance-changed", wrapped);
+  },
   sendDiagnostic(payload) {
     ipcRenderer.send("renderer:diagnostic", payload);
   },
@@ -103,5 +108,8 @@ contextBridge.exposeInMainWorld("voiceSettings", {
   },
   savePrompts(prompts) {
     return ipcRenderer.invoke("prompts:save", prompts);
+  },
+  updateAppearance(appearance) {
+    return ipcRenderer.invoke("overlay:update-appearance", appearance);
   },
 });

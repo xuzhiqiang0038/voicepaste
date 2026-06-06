@@ -310,42 +310,27 @@ function getEditableConfig() {
   return parseConfigFile();
 }
 
-function saveConfig(nextConfig) {
-  const yaml = YAML.stringify(nextConfig, {
-    indent: 2,
-    lineWidth: 0,
-  });
-  fs.writeFileSync(CONFIG_PATH, yaml, "utf8");
-}
-
-function saveConfigText(text) {
-  YAML.parse(text);
-  fs.writeFileSync(CONFIG_PATH, text, "utf8");
-}
-
-function getConfigExamplePath() {
-  return resolveConfigExamplePath();
-}
-
-function resetConfigToDefault() {
-  const examplePath = getConfigExamplePath();
-  if (!examplePath) {
-    throw new Error("未找到 config.yaml.example");
-  }
-
-  const content = fs.readFileSync(examplePath, "utf8");
-  fs.writeFileSync(CONFIG_PATH, content, "utf8");
-}
-
-module.exports = {
-  CONFIG_PATH,
-  PROMPTS_PATH,
-  getEditableConfig,
-  loadConfig,
-  loadPrompts,
-  readConfigFile,
-  resetConfigToDefault,
-  saveConfig,
-  saveConfigText,
-  savePrompts,
+const OVERLAY_DEFAULTS = {
+  background_color: "#121212",
+  background_opacity: 0.68,
+  border_color: "#8e8e93",
+  border_width: 1,
+  border_radius: 16,
+  font_family: "",
+  font_size: 16,
+  font_weight: 500,
+  text_color: "#ffffff",
+  partial_text_color: "#ffffff",
+  partial_text_opacity: 0.58,
+  waveform_color: "#000000",
+  max_width: 680,
 };
+
+function getOverlayAppearance() {
+  const raw = parseConfigFile();
+  const overlay = raw?.overlay || {};
+  return {
+    background_color: String(overlay.background_color ?? OVERLAY_DEFAULTS.background_color),
+    background_opacity: Number(overlay.background_opacity ?? OVERLAY_DEFAULTS.background_opacity),
+    border_color: String(overlay.border_color ?? OVERLAY_DEFAULTS.border_color),
+    border_width: Number(overlay.border_width ?? OVERLAY_DEFAULTS.bo
