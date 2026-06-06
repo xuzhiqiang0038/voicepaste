@@ -1075,6 +1075,9 @@ kbd {
 
 .stats-details {
   margin-top: 2px;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .stats-details-toggle {

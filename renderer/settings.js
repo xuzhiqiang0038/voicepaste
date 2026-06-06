@@ -1264,9 +1264,11 @@ SOFTWARE.`;
     item.addEventListener("click", () => switchSection(item.dataset.section));
   });
 
-  $("statsDetailsToggle")?.addEventListener("click", (event) => {
-    const button = event.currentTarget;
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("#statsDetailsToggle");
+    if (!button) return;
     const panel = $("statsDetailsPanel");
+    if (!panel) return;
     const expanded = button.getAttribute("aria-expanded") === "true";
     button.setAttribute("aria-expanded", String(!expanded));
     panel.hidden = expanded;
