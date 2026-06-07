@@ -1021,6 +1021,7 @@ kbd {
 .btn:focus-visible,
 .seg-btn:focus-visible,
 .theme-btn:focus-visible,
+.provider-chip:focus-visible,
 .pw-toggle:focus-visible,
 .tag-remove:focus-visible,
 .stats-details-toggle:focus-visible,
