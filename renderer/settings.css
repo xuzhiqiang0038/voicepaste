@@ -187,14 +187,14 @@ body {
 }
 
 .theme-btn:hover {
-  border-color: var(--selection-border);
+  border-color: var(--border-subtle);
   color: var(--text-dim);
   background: var(--brand-accent-soft);
 }
 
 .theme-btn.active {
   background: var(--selection-bg);
-  border-color: var(--selection-border);
+  border-color: transparent;
   color: var(--selection-text);
   box-shadow: var(--selection-shadow);
 }
@@ -565,7 +565,7 @@ kbd {
   background: var(--selection-bg);
   color: var(--selection-text);
   font-weight: 500;
-  box-shadow: inset 0 0 0 1px var(--selection-border);
+  box-shadow: none;
 }
 
 .prompt-config-card {
@@ -618,12 +618,12 @@ kbd {
 }
 
 .provider-chip:hover {
-  border-color: var(--brand-accent-muted);
+  border-color: var(--border-subtle);
   background: var(--brand-accent-soft);
 }
 
 .provider-chip.active {
-  border-color: var(--selection-border);
+  border-color: transparent;
   background: var(--selection-bg);
   color: var(--selection-text);
   box-shadow: var(--selection-shadow);
@@ -1328,7 +1328,7 @@ kbd {
 }
 
 .heatmap-cell:hover {
-  box-shadow: 0 0 0 1px var(--brand-accent-muted);
+  box-shadow: none;
   transform: scale(1.08);
 }
 
@@ -1635,7 +1635,7 @@ kbd {
 .appearance-slider-row input[type="range"] {
   flex: 1;
   height: 4px;
-  accent-color: var(--accent);
+  accent-color: var(--toggle-active);
   cursor: pointer;
 }
 
