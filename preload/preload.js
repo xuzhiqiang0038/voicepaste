@@ -23,8 +23,11 @@ contextBridge.exposeInMainWorld("voiceOverlay", {
   sendDiagnostic(payload) {
     ipcRenderer.send("renderer:diagnostic", payload);
   },
-  notifyAudioStopped() {
-    ipcRenderer.send("renderer:audio-stopped");
+  notifyAudioStopped(payload) {
+    ipcRenderer.send("renderer:audio-stopped", payload);
+  },
+  sendAudioInputMissing(payload) {
+    ipcRenderer.send("renderer:audio-input-missing", payload);
   },
   sendAudioWarmupReady() {
     ipcRenderer.send("renderer:audio-warmup-ready");

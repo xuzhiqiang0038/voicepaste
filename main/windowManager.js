@@ -72,7 +72,7 @@ function createOverlayWindow() {
   return win;
 }
 
-function createSettingsWindow() {
+function createSettingsWindow(titleBarOverlay = true) {
   const workArea = screen.getPrimaryDisplay().workArea;
   const width = Math.max(760, Math.min(1500, workArea.width - 48));
   const height = Math.max(680, Math.min(1000, workArea.height - 48));
@@ -84,7 +84,9 @@ function createSettingsWindow() {
     center: true,
     show: false,
     frame: true,
-    title: "VoicePaste 配置",
+    titleBarStyle: "hidden",
+    titleBarOverlay,
+    title: "",
     icon: getAppIconPath(),
     backgroundColor: "#000000",
     autoHideMenuBar: true,

@@ -466,7 +466,7 @@
       }
 
       el.versionText.textContent = data.runtime?.version ? `v${data.runtime.version}` : "-";
-      document.title = "VoicePaste";
+      document.title = "";
 
       clearDirty();
       autoCheckUpdatesOnce();

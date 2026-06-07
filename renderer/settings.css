@@ -58,17 +58,26 @@ body {
 }
 
 .sidebar-header {
-  height: 52px;
+  height: 58px;
   display: flex;
   align-items: center;
-  padding: 0 20px;
+  gap: 10px;
+  padding: 0 18px;
   border-bottom: 1px solid var(--border-subtle);
+  -webkit-app-region: drag;
+}
+
+.app-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  flex-shrink: 0;
 }
 
 .app-name {
   font-weight: 600;
-  font-size: 14px;
-  letter-spacing: -0.01em;
+  font-size: 15px;
+  letter-spacing: 0;
 }
 
 /* Sidebar Nav */
@@ -178,14 +187,16 @@ body {
 }
 
 .theme-btn:hover {
-  border-color: var(--text-muted);
+  border-color: var(--selection-border);
   color: var(--text-dim);
+  background: var(--brand-accent-soft);
 }
 
 .theme-btn.active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--selection-bg);
+  border-color: var(--selection-border);
+  color: var(--selection-text);
+  box-shadow: var(--selection-shadow);
 }
 
 /* ===== Main Content ===== */
@@ -528,10 +539,11 @@ kbd {
 
 .seg-control {
   display: inline-flex;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0;
+  background: var(--input-bg);
 }
 
 .seg-btn {
@@ -546,13 +558,14 @@ kbd {
 }
 
 .seg-btn + .seg-btn {
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--border-subtle);
 }
 
 .seg-btn.active {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--selection-bg);
+  color: var(--selection-text);
   font-weight: 500;
+  box-shadow: inset 0 0 0 1px var(--selection-border);
 }
 
 .prompt-config-card {
@@ -590,19 +603,30 @@ kbd {
 .provider-chip {
   height: 30px;
   padding: 0 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
   background: var(--input-bg);
   color: var(--text);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.provider-chip:hover {
+  border-color: var(--brand-accent-muted);
+  background: var(--brand-accent-soft);
 }
 
 .provider-chip.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
+  border-color: var(--selection-border);
+  background: var(--selection-bg);
+  color: var(--selection-text);
+  box-shadow: var(--selection-shadow);
 }
 
 .prompt-add-btn {
@@ -1003,7 +1027,7 @@ kbd {
 .history-action:focus-visible,
 .history-more:focus-visible,
 .heatmap-cell:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand-accent);
   outline-offset: 2px;
 }
 
@@ -1297,6 +1321,14 @@ kbd {
   aspect-ratio: 1;
   padding: 0;
   cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.heatmap-cell:hover {
+  box-shadow: 0 0 0 1px var(--brand-accent-muted);
+  transform: scale(1.08);
 }
 
 .heatmap-cell.future {

@@ -12,6 +12,11 @@ const SOUND_DEFAULTS = {
   end: true,
   volume: 0.72,
 };
+const AUDIO_INPUT_CHECK_MS = 1200;
+const AUDIO_INPUT_MIN_RMS = 0.0025;
+const AUDIO_INPUT_MIN_PEAK = 0.012;
+const AUDIO_INPUT_REQUIRED_FRAMES = 2;
+const AUDIO_INPUT_MISSING_MESSAGE = "未检测到语音，请检查麦克风";
 let soundConfig = { ...SOUND_DEFAULTS };
 
 function reportSoundIssue(type, payload = {}) {
@@ -202,6 +207,12 @@ const state = {
   sourceNode: null,
   processorNode: null,
   analyserNode: null,
+  audioInputTimer: 0,
+  inputSignalDetected: false,
+  inputSignalFrames: 0,
+  maxInputRms: 0,
+  maxInputPeak: 0,
+  audioInputMissingReported: false,
   pendingSamples: [],
   layoutWidth: 0,
   layoutWrap: false,
@@ -285,7 +296,107 @@ function stopWaveformAnimation() {
   state.smoothedLevel = 0;
 }
 
+function isCapturingAudioInput() {
+  return state.appState === "connecting" || state.appState === "recording";
+}
+
+function clearAudioInputTimer() {
+  if (!state.audioInputTimer) {
+    return;
+  }
+  clearTimeout(state.audioInputTimer);
+  state.audioInputTimer = 0;
+}
+
+function resetAudioInputMonitor() {
+  clearAudioInputTimer();
+  state.inputSignalDetected = false;
+  state.inputSignalFrames = 0;
+  state.maxInputRms = 0;
+  state.maxInputPeak = 0;
+  state.audioInputMissingReported = false;
+}
+
+function getAudioTrackLabel() {
+  return state.mediaStream?.getAudioTracks?.()[0]?.label || "system";
+}
+
+function reportAudioInputMissing() {
+  clearAudioInputTimer();
+  if (state.audioInputMissingReported || state.inputSignalDetected || !isCapturingAudioInput()) {
+    return;
+  }
+
+  state.audioInputMissingReported = true;
+  window.voiceOverlay.sendAudioInputMissing({
+    message: AUDIO_INPUT_MISSING_MESSAGE,
+    deviceLabel: getAudioTrackLabel(),
+    maxRms: Number(state.maxInputRms.toFixed(6)),
+    maxPeak: Number(state.maxInputPeak.toFixed(6)),
+  });
+  state.hintText = AUDIO_INPUT_MISSING_MESSAGE;
+  state.hintLevel = "error";
+  state.hintVariant = "text";
+  updateView();
+}
+
+function armAudioInputMonitor() {
+  clearAudioInputTimer();
+  if (state.inputSignalDetected || state.audioInputMissingReported || !state.mediaStream) {
+    return;
+  }
+  state.audioInputTimer = setTimeout(reportAudioInputMissing, AUDIO_INPUT_CHECK_MS);
+}
+
+function observeAudioInput(inputData) {
+  let sumSquares = 0;
+  let peak = 0;
+
+  for (let index = 0; index < inputData.length; index += 1) {
+    const sample = inputData[index];
+    sumSquares += sample * sample;
+    peak = Math.max(peak, Math.abs(sample));
+  }
+
+  const rms = Math.sqrt(sumSquares / inputData.length);
+  state.maxInputRms = Math.max(state.maxInputRms, rms);
+  state.maxInputPeak = Math.max(state.maxInputPeak, peak);
+
+  if (rms >= AUDIO_INPUT_MIN_RMS || peak >= AUDIO_INPUT_MIN_PEAK) {
+    state.inputSignalFrames += 1;
+  }
+
+  if (!state.inputSignalDetected && state.inputSignalFrames >= AUDIO_INPUT_REQUIRED_FRAMES) {
+    state.inputSignalDetected = true;
+    clearAudioInputTimer();
+    window.voiceOverlay.sendDiagnostic({
+      type: "audio:input-detected",
+      deviceLabel: getAudioTrackLabel(),
+      maxRms: Number(state.maxInputRms.toFixed(6)),
+      maxPeak: Number(state.maxInputPeak.toFixed(6)),
+    });
+  }
+}
+
+function normalizeAudioCaptureError(error) {
+  const name = error?.name || "";
+  if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+    return "未检测到麦克风，请检查设备连接";
+  }
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    return "无法获取麦克风权限";
+  }
+  if (name === "NotReadableError" || name === "TrackStartError" || name === "AbortError") {
+    return "麦克风被占用或不可用";
+  }
+  return error?.message || "音频设备初始化失败";
+}
+
 function getVisibleHintText() {
+  if (state.hintLevel === "error" && state.hintText) {
+    return state.hintText;
+  }
+
   const visualState =
     state.appState === "recording" && !state.audioReady ? "connecting" : state.appState;
 
@@ -418,6 +529,7 @@ function resetState() {
   state.hintLevel = "info";
   state.hintVariant = "text";
   state.audioReady = false;
+  resetAudioInputMonitor();
   state.layoutWidth = 0;
   state.layoutWrap = false;
   state.renderedWidth = 0;
@@ -479,6 +591,13 @@ function int16ToBase64(int16Array) {
 function flushPendingAudio(force = false) {
   const targetChunkSize = 1600;
 
+  if (!state.inputSignalDetected || state.audioInputMissingReported) {
+    if (force) {
+      state.pendingSamples = [];
+    }
+    return;
+  }
+
   while (
     state.pendingSamples.length >= targetChunkSize ||
     (force && state.pendingSamples.length > 0)
@@ -532,13 +651,20 @@ async function startAudioCapture() {
   const processorNode = audioContext.createScriptProcessor(4096, 1, 1);
   state.pendingSamples = [];
   state.audioReady = false;
+  resetAudioInputMonitor();
 
   processorNode.onaudioprocess = (event) => {
-    if (state.appState !== "recording") {
+    if (!isCapturingAudioInput() || state.audioInputMissingReported) {
       return;
     }
 
     const inputData = event.inputBuffer.getChannelData(0);
+    observeAudioInput(inputData);
+
+    if (state.appState !== "recording" || !state.inputSignalDetected) {
+      return;
+    }
+
     const downsampled = downsampleBuffer(inputData, audioContext.sampleRate, 16000);
 
     for (let index = 0; index < downsampled.length; index += 1) {
@@ -561,16 +687,29 @@ async function startAudioCapture() {
   state.sourceNode = sourceNode;
   state.processorNode = processorNode;
   state.analyserNode = analyserNode;
+  if (state.appState === "recording") {
+    armAudioInputMonitor();
+  }
 
   window.voiceOverlay.sendDiagnostic({
     type: "audio:capture-started",
     sampleRate: audioContext.sampleRate,
+    deviceLabel: getAudioTrackLabel(),
   });
 }
 
-async function stopAudioCapture() {
+async function stopAudioCapture(options = {}) {
+  const inputSignalDetected = state.inputSignalDetected;
+  const shouldFlush =
+    options.discardAudio !== true && inputSignalDetected && !state.audioInputMissingReported;
+
+  clearAudioInputTimer();
   stopWaveformAnimation();
-  flushPendingAudio(true);
+  if (shouldFlush) {
+    flushPendingAudio(true);
+  } else {
+    state.pendingSamples = [];
+  }
 
   if (state.analyserNode) {
     state.analyserNode.disconnect();
@@ -601,6 +740,8 @@ async function stopAudioCapture() {
   }
 
   state.pendingSamples = [];
+  resetAudioInputMonitor();
+  return { inputSignalDetected };
 }
 
 window.voiceOverlay.onEvent(async ({ type, payload }) => {
@@ -616,6 +757,7 @@ window.voiceOverlay.onEvent(async ({ type, payload }) => {
       if (payload.state === "recording") {
         void playSound("start");
         startWaveformAnimation();
+        armAudioInputMonitor();
       }
       if (
         payload.state === "idle" ||
@@ -636,10 +778,11 @@ window.voiceOverlay.onEvent(async ({ type, payload }) => {
         await startAudioCapture();
         window.voiceOverlay.sendAudioWarmupReady();
       } catch (error) {
+        const message = normalizeAudioCaptureError(error);
         window.voiceOverlay.sendAudioWarmupFailed({
-          message: error.message || String(error),
+          message,
         });
-        state.hintText = error.message || "无法获取麦克风权限";
+        state.hintText = message;
         state.hintLevel = "error";
         state.hintVariant = "text";
         updateView();
@@ -654,19 +797,24 @@ window.voiceOverlay.onEvent(async ({ type, payload }) => {
         state.hintLevel = "info";
         state.hintVariant = "text";
       } catch (error) {
+        const message = normalizeAudioCaptureError(error);
         window.voiceOverlay.sendDiagnostic({
           type: "audio:capture-failed",
-          message: error.message || String(error),
+          message,
         });
-        state.hintText = error.message || "无法获取麦克风权限";
+        state.hintText = message;
         state.hintLevel = "error";
         state.hintVariant = "text";
       }
       updateView();
       break;
     case "recording:stop":
-      await stopAudioCapture();
-      window.voiceOverlay.notifyAudioStopped();
+      {
+        const result = await stopAudioCapture({
+          discardAudio: payload?.discardAudio === true,
+        });
+        window.voiceOverlay.notifyAudioStopped(result);
+      }
       break;
     case "transcript":
       state.finalText = payload.finalText || "";

@@ -55,6 +55,7 @@ const DEBOUNCE_MS = 200;
 const STALE_KEY_MS = 5000;
 const HOLD_TRIGGER_DELAY_MS = 300;
 const ERROR_OVERLAY_MS = 2000;
+const AUDIO_INPUT_MISSING_MESSAGE = "未检测到语音，请检查麦克风";
 
 const pressedKeys = new Map();
 
@@ -556,6 +557,7 @@ let pendingAudioStopResolve = null;
 let isQuitting = false;
 let wsReady = false;
 let audioWarmupReady = false;
+let lastAudioStopHadSignal = false;
 let recordingStartedAt = 0;
 
 function getHotkey() {
@@ -741,6 +743,39 @@ function waitForRendererAudioStop(timeoutMs = 1200) {
   });
 }
 
+function scheduleErrorOverlayHide() {
+  setTimeout(() => {
+    if (appState === "error") {
+      setState("idle");
+      hideOverlay();
+    }
+  }, ERROR_OVERLAY_MS);
+}
+
+async function abortRecordingWithHint(message, options = {}) {
+  if (appState !== "connecting" && appState !== "recording" && appState !== "finishing") {
+    logInfo("recording abort ignored", { appState, message });
+    return;
+  }
+
+  const hintText = message || "录音失败";
+  wsReady = false;
+  audioWarmupReady = false;
+  sendOverlayMessage("recording:stop", {
+    discardAudio: options.discardAudio === true,
+  });
+  resetHotkeyGestureState();
+  await cleanupSession();
+  resetTranscript();
+  activeSessionPromptId = null;
+  setState("error");
+  sendOverlayMessage("hint", {
+    level: "error",
+    text: hintText,
+  });
+  scheduleErrorOverlayHide();
+}
+
 async function startRecordingFlow(options = {}) {
   if (appState !== "idle") {
     logInfo("start ignored", { appState });
@@ -773,6 +808,7 @@ async function startRecordingFlow(options = {}) {
   showOverlay();
   setState("connecting");
   receivedAudioChunkCount = 0;
+  lastAudioStopHadSignal = false;
   wsReady = false;
   audioWarmupReady = false;
   sendOverlayMessage("audio:warmup");
@@ -805,12 +841,7 @@ async function startRecordingFlow(options = {}) {
           text: message,
         });
         cleanupSession();
-        setTimeout(() => {
-          if (appState === "error") {
-            setState("idle");
-            hideOverlay();
-          }
-        }, ERROR_OVERLAY_MS);
+        scheduleErrorOverlayHide();
       },
       onClose: ({ code, reason }) => {
         asrSession = null;
@@ -829,12 +860,7 @@ async function startRecordingFlow(options = {}) {
             level: "error",
             text: `ASR 连接已断开${reason ? `：${reason}` : code ? `（${code}）` : ""}`,
           });
-          setTimeout(() => {
-            if (appState === "error") {
-              setState("idle");
-              hideOverlay();
-            }
-          }, ERROR_OVERLAY_MS);
+          scheduleErrorOverlayHide();
         }
       },
     });
@@ -863,12 +889,7 @@ async function startRecordingFlow(options = {}) {
         text: msg,
       });
       await cleanupSession();
-      setTimeout(() => {
-        if (appState === "error") {
-          setState("idle");
-          hideOverlay();
-        }
-      }, ERROR_OVERLAY_MS);
+      scheduleErrorOverlayHide();
     }
   }
 }
@@ -894,6 +915,20 @@ async function finishRecordingFlow() {
   setState("finishing");
   sendOverlayMessage("recording:stop");
   await waitForRendererAudioStop();
+
+  if (!lastAudioStopHadSignal && receivedAudioChunkCount === 0) {
+    logInfo("finish completed without audio input");
+    await cleanupSession();
+    resetTranscript();
+    activeSessionPromptId = null;
+    setState("error");
+    sendOverlayMessage("hint", {
+      level: "error",
+      text: AUDIO_INPUT_MISSING_MESSAGE,
+    });
+    scheduleErrorOverlayHide();
+    return;
+  }
 
   try {
     const finalText = await asrSession.commitAndAwaitFinal();
@@ -1081,6 +1116,21 @@ function resolveTheme() {
   return preference;
 }
 
+function getSettingsTitleBarOverlay() {
+  const isDark = resolveTheme() === "dark";
+  return {
+    color: isDark ? "#111111" : "#ffffff",
+    symbolColor: isDark ? "#f5f5f5" : "#1d1d1f",
+    height: 38,
+  };
+}
+
+function applySettingsTitleBarOverlay() {
+  if (!settingsWindow || settingsWindow.isDestroyed()) return;
+  if (typeof settingsWindow.setTitleBarOverlay !== "function") return;
+  settingsWindow.setTitleBarOverlay(getSettingsTitleBarOverlay());
+}
+
 function getTrayIconPath() {
   if (app.isPackaged) {
     if (process.platform === "win32") {
@@ -1114,7 +1164,7 @@ function createTrayImage() {
 
 function showSettingsWindow() {
   if (!settingsWindow || settingsWindow.isDestroyed()) {
-    settingsWindow = createSettingsWindow();
+    settingsWindow = createSettingsWindow(getSettingsTitleBarOverlay());
     settingsWindow.on("close", (event) => {
       if (isQuitting) {
         return;
@@ -1125,6 +1175,7 @@ function showSettingsWindow() {
     });
   }
 
+  applySettingsTitleBarOverlay();
   if (app.dock) app.dock.show();
   settingsWindow.show();
   settingsWindow.focus();
@@ -1428,6 +1479,7 @@ app.whenReady().then(() => {
   nativeTheme.on("updated", () => {
     const resolved = resolveTheme();
     if (settingsWindow && !settingsWindow.isDestroyed()) {
+      applySettingsTitleBarOverlay();
       settingsWindow.webContents.send("settings:event", {
         type: "theme-changed",
         payload: { resolved },
@@ -1444,7 +1496,9 @@ app.whenReady().then(() => {
     config.app.theme = preference;
     saveConfig(config);
     reloadRuntimeConfig();
-    return { preference, resolved: resolveTheme() };
+    const resolved = resolveTheme();
+    applySettingsTitleBarOverlay();
+    return { preference, resolved };
   });
 
   ipcMain.handle("stats:get", async () => {
@@ -1474,10 +1528,22 @@ app.whenReady().then(() => {
     return { ok: true };
   });
 
-  ipcMain.on("renderer:audio-stopped", () => {
+  ipcMain.on("renderer:audio-stopped", (_event, payload) => {
+    lastAudioStopHadSignal = Boolean(payload?.inputSignalDetected);
     if (pendingAudioStopResolve) {
       pendingAudioStopResolve();
     }
+  });
+
+  ipcMain.on("renderer:audio-input-missing", (_event, payload) => {
+    const message = payload?.message || AUDIO_INPUT_MISSING_MESSAGE;
+    logError("audio input missing", {
+      message,
+      deviceLabel: payload?.deviceLabel,
+      maxRms: payload?.maxRms,
+      maxPeak: payload?.maxPeak,
+    });
+    void abortRecordingWithHint(message, { discardAudio: true });
   });
 
   ipcMain.on("renderer:audio-warmup-ready", () => {
@@ -1496,12 +1562,7 @@ app.whenReady().then(() => {
       level: "error",
       text: payload?.message || "音频设备初始化失败",
     });
-    setTimeout(() => {
-      if (appState === "error") {
-        setState("idle");
-        hideOverlay();
-      }
-    }, ERROR_OVERLAY_MS);
+    scheduleErrorOverlayHide();
   });
 
   app.on("activate", () => {
