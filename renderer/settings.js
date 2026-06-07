@@ -939,6 +939,9 @@
     if (id === "yaml") {
       syncFormToYaml();
     }
+    if (id === "llm") {
+      requestAnimationFrame(resizePromptAreas);
+    }
 
     document.querySelector(".main").scrollTop = 0;
   }
@@ -1414,6 +1417,15 @@ SOFTWARE.`;
     return `prompt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
+  function resizePromptArea(area) {
+    area.style.height = "auto";
+    area.style.height = `${area.scrollHeight}px`;
+  }
+
+  function resizePromptAreas() {
+    document.querySelectorAll(".prompt-item-body").forEach(resizePromptArea);
+  }
+
   async function loadAndRenderPrompts() {
     try {
       promptsData = await window.voiceSettings.loadPrompts();
@@ -1472,8 +1484,10 @@ SOFTWARE.`;
       promptArea.className = "prompt-item-body";
       promptArea.placeholder = "输入系统提示词...";
       promptArea.value = item.prompt || "";
+      requestAnimationFrame(() => resizePromptArea(promptArea));
       promptArea.addEventListener("input", () => {
         promptsData[index].prompt = promptArea.value;
+        resizePromptArea(promptArea);
         scheduleSavePrompts();
       });
 

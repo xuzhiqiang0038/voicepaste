@@ -12,10 +12,10 @@ const SOUND_DEFAULTS = {
   end: true,
   volume: 0.72,
 };
-const AUDIO_INPUT_CHECK_MS = 1200;
+const AUDIO_INPUT_CHECK_MS = 2000;
 const AUDIO_INPUT_MIN_RMS = 0.0025;
 const AUDIO_INPUT_MIN_PEAK = 0.012;
-const AUDIO_INPUT_REQUIRED_FRAMES = 2;
+const AUDIO_INPUT_REQUIRED_FRAMES = 1;
 const AUDIO_INPUT_MISSING_MESSAGE = "未检测到语音，请检查麦克风";
 let soundConfig = { ...SOUND_DEFAULTS };
 
@@ -321,9 +321,37 @@ function getAudioTrackLabel() {
   return state.mediaStream?.getAudioTracks?.()[0]?.label || "system";
 }
 
+function hasObservedAudioSignal() {
+  return (
+    state.inputSignalFrames >= AUDIO_INPUT_REQUIRED_FRAMES ||
+    state.maxInputRms >= AUDIO_INPUT_MIN_RMS ||
+    state.maxInputPeak >= AUDIO_INPUT_MIN_PEAK
+  );
+}
+
+function markAudioInputDetected(type = "audio:input-detected") {
+  if (state.inputSignalDetected) {
+    return;
+  }
+
+  state.inputSignalDetected = true;
+  clearAudioInputTimer();
+  window.voiceOverlay.sendDiagnostic({
+    type,
+    deviceLabel: getAudioTrackLabel(),
+    maxRms: Number(state.maxInputRms.toFixed(6)),
+    maxPeak: Number(state.maxInputPeak.toFixed(6)),
+  });
+}
+
 function reportAudioInputMissing() {
   clearAudioInputTimer();
   if (state.audioInputMissingReported || state.inputSignalDetected || !isCapturingAudioInput()) {
+    return;
+  }
+
+  if (hasObservedAudioSignal()) {
+    markAudioInputDetected("audio:input-detected-at-timeout");
     return;
   }
 
@@ -366,15 +394,8 @@ function observeAudioInput(inputData) {
     state.inputSignalFrames += 1;
   }
 
-  if (!state.inputSignalDetected && state.inputSignalFrames >= AUDIO_INPUT_REQUIRED_FRAMES) {
-    state.inputSignalDetected = true;
-    clearAudioInputTimer();
-    window.voiceOverlay.sendDiagnostic({
-      type: "audio:input-detected",
-      deviceLabel: getAudioTrackLabel(),
-      maxRms: Number(state.maxInputRms.toFixed(6)),
-      maxPeak: Number(state.maxInputPeak.toFixed(6)),
-    });
+  if (!state.inputSignalDetected && hasObservedAudioSignal()) {
+    markAudioInputDetected();
   }
 }
 

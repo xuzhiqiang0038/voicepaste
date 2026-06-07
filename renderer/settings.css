@@ -207,6 +207,17 @@ body {
   position: relative;
 }
 
+.main::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 220px;
+  right: 132px;
+  height: 38px;
+  z-index: 20;
+  -webkit-app-region: drag;
+}
+
 .main::-webkit-scrollbar {
   width: 6px;
 }
@@ -637,14 +648,17 @@ kbd {
 
 .prompt-list {
   display: grid;
+  gap: 28px;
+  padding: 2px 18px 28px;
 }
 
 .prompt-item {
-  padding: 0 18px;
+  padding: 0;
 }
 
 .prompt-item + .prompt-item {
   border-top: 1px solid var(--border-subtle);
+  padding-top: 26px;
 }
 
 .prompt-item-head {
@@ -652,7 +666,7 @@ kbd {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 0 10px;
+  padding: 0 0 12px;
 }
 
 .prompt-item-status {
@@ -691,24 +705,30 @@ kbd {
 
 .prompt-item-body {
   width: 100%;
-  min-height: 96px;
-  margin-bottom: 14px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 0;
+  min-height: 184px;
+  margin-bottom: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid transparent;
+  border-radius: 8px;
   background: var(--input-bg);
   color: var(--text);
   font-size: 12.5px;
-  line-height: 1.55;
+  line-height: 1.65;
   font-family: inherit;
   resize: vertical;
+  overflow: hidden;
   outline: none;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    border-left-color 0.16s ease;
 }
 
 .prompt-item-body:focus {
-  border-color: var(--accent);
-  outline: 2px solid var(--accent-dim);
-  outline-offset: 1px;
+  border-color: var(--border-subtle);
+  border-left-color: var(--brand-accent-muted);
+  background: var(--brand-accent-soft);
 }
 
 /* ===== Input Fields ===== */
@@ -724,13 +744,14 @@ kbd {
   font-size: 13px;
   font-family: inherit;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease;
 }
 
 .input-field:focus {
-  border-color: var(--accent);
-  outline: 2px solid var(--accent-dim);
-  outline-offset: 1px;
+  border-color: var(--border-subtle);
+  background: var(--brand-accent-soft);
 }
 
 .input-field.mono {
