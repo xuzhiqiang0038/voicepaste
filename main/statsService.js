@@ -406,20 +406,6 @@ function deleteHistoryItem(id) {
       .map((entry) => (typeof entry === "string" ? entry : JSON.stringify(entry)))
       .join("\n");
     fs.writeFileSync(filePath, nextContent ? `${nextContent}\n` : "", "utf8");
-    const previousStats = loadStats();
-    const recovered = readHistorySnapshot();
-    stats = {
-      ...defaultStats(),
-      schemaVersion: STATS_SCHEMA_VERSION,
-      firstUsedAt: previousStats.firstUsedAt || recovered.firstUsedAt,
-      totalSessions: recovered.totalSessions,
-      totalCharacters: recovered.totalCharacters,
-      totalDurationMs: recovered.totalDurationMs,
-      dailyCounts: recovered.dailyCounts,
-      dailyDurations: recovered.dailyDurations,
-      dailySessions: recovered.dailySessions,
-    };
-    flushStats();
 
     return { ok: true };
   }
