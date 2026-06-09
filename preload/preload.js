@@ -74,6 +74,9 @@ contextBridge.exposeInMainWorld("voiceSettings", {
   setTheme(preference) {
     return ipcRenderer.invoke("settings:set-theme", preference);
   },
+  setAccentTheme(preference) {
+    return ipcRenderer.invoke("settings:set-accent-theme", preference);
+  },
   onEvent(listener) {
     const wrapped = (_event, payload) => listener(payload);
     ipcRenderer.on("settings:event", wrapped);

@@ -4,6 +4,7 @@
   let hotwords = [];
   let isDirty = false;
   let currentThemePreference = "system";
+  let currentAccentTheme = "purple";
   let currentHotkeyMode = "toggle";
   let currentLlmProvider = "deepseek";
   let hasAutoCheckedUpdates = false;
@@ -85,6 +86,82 @@
       if (svg) {
         el.innerHTML = svg;
       }
+    });
+  }
+
+  let historyCopyToastTimer = null;
+
+  function showHistoryCopyToast(button) {
+    if (!button) return;
+    let toast = document.querySelector(".history-copy-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.className = "history-copy-toast";
+      toast.setAttribute("role", "status");
+      toast.textContent = "已复制";
+      document.body.appendChild(toast);
+    }
+
+    clearTimeout(historyCopyToastTimer);
+    toast.classList.remove("is-visible");
+
+    const rect = button.getBoundingClientRect();
+    toast.style.left = `${rect.left + rect.width / 2}px`;
+    toast.style.top = `${rect.top - 10}px`;
+
+    requestAnimationFrame(() => {
+      toast.classList.add("is-visible");
+    });
+
+    historyCopyToastTimer = setTimeout(() => {
+      toast.classList.remove("is-visible");
+    }, 1100);
+  }
+
+  function confirmHistoryDelete(item) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement("div");
+      overlay.className = "history-confirm-overlay";
+      overlay.innerHTML =
+        '<div class="history-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="historyConfirmTitle">' +
+        '<div class="history-confirm-title" id="historyConfirmTitle">删除这条记录？</div>' +
+        `<div class="history-confirm-preview">${escapeHtml(item.text || "")}</div>` +
+        '<div class="history-confirm-note">此操作不可恢复</div>' +
+        '<div class="history-confirm-actions">' +
+        '<button type="button" class="history-confirm-cancel">取消</button>' +
+        '<button type="button" class="history-confirm-delete">删除</button>' +
+        "</div></div>";
+
+      let closed = false;
+      const close = (confirmed) => {
+        if (closed) return;
+        closed = true;
+        document.removeEventListener("keydown", onKeyDown);
+        overlay.classList.remove("is-visible");
+        setTimeout(() => overlay.remove(), 140);
+        resolve(confirmed);
+      };
+
+      const onKeyDown = (event) => {
+        if (event.key === "Escape") close(false);
+      };
+
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) close(false);
+      });
+      overlay
+        .querySelector(".history-confirm-cancel")
+        ?.addEventListener("click", () => close(false));
+      overlay
+        .querySelector(".history-confirm-delete")
+        ?.addEventListener("click", () => close(true));
+
+      document.body.appendChild(overlay);
+      document.addEventListener("keydown", onKeyDown);
+      requestAnimationFrame(() => {
+        overlay.classList.add("is-visible");
+        overlay.querySelector(".history-confirm-cancel")?.focus();
+      });
     });
   }
 
@@ -186,6 +263,16 @@
     return `${Math.round(normalizeSoundVolume(volume) * 100)}%`;
   }
 
+  function updateRangeProgress(input) {
+    if (!input) return;
+    const min = Number(input.min || 0);
+    const max = Number(input.max || 100);
+    const value = Number(input.value || 0);
+    const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    const clamped = Math.max(0, Math.min(100, percent));
+    input.style.setProperty("--range-progress", `${clamped}%`);
+  }
+
   function updateSoundControls() {
     const enabled = el.soundEnabled?.checked !== false;
     for (const control of [el.soundStart, el.soundEnd, el.soundVolume]) {
@@ -197,6 +284,7 @@
     if (el.soundVolumeLabel) {
       el.soundVolumeLabel.textContent = formatSoundVolume(el.soundVolume?.value);
     }
+    updateRangeProgress(el.soundVolume);
   }
 
   function autoSaveForm() {
@@ -240,6 +328,32 @@
     document.querySelectorAll(".theme-btn").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.themeVal === currentThemePreference);
     });
+  }
+
+  function normalizeAccentTheme(value) {
+    return value === "green" ? "green" : "purple";
+  }
+
+  function applyAccentTheme(preference) {
+    const accentTheme = normalizeAccentTheme(preference);
+    if (accentTheme === "green") {
+      document.documentElement.setAttribute("data-accent", "green");
+    } else {
+      document.documentElement.removeAttribute("data-accent");
+    }
+  }
+
+  function updateAccentButtons(preference) {
+    const accentTheme = normalizeAccentTheme(preference);
+    document.querySelectorAll(".accent-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.accentVal === accentTheme);
+    });
+  }
+
+  function initAccentSelector(data) {
+    currentAccentTheme = normalizeAccentTheme(data.runtime?.accentTheme);
+    applyAccentTheme(currentAccentTheme);
+    updateAccentButtons(currentAccentTheme);
   }
 
   // ===== Hotkey display =====
@@ -453,6 +567,7 @@
       parsedConfig = data.parsedConfig || {};
       populateForm(data);
       initThemeSelector(data);
+      initAccentSelector(data);
       el.yamlEditor.value = data.configText || "";
       autoResizeYamlEditor();
       updateMicStatus(data.runtime?.microphoneStatus || "unknown");
@@ -566,6 +681,7 @@
     config.app.remove_trailing_period = el.removeTrailingPeriod.checked;
     config.app.keep_clipboard = el.keepClipboard.checked;
     config.app.theme = currentThemePreference;
+    config.app.accent_theme = currentAccentTheme;
 
     config.sounds = normalizeSoundConfig({
       enabled: el.soundEnabled.checked,
@@ -975,6 +1091,10 @@
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
 
+  function startOfLocalDay(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
   function formatDurationMs(totalMs) {
     const totalSeconds = Math.max(0, Math.round(Number(totalMs || 0) / 1000));
     const hours = Math.floor(totalSeconds / 3600);
@@ -1053,30 +1173,17 @@
     if (monthsEl) monthsEl.innerHTML = "";
 
     const weeks = 52;
-    const now = new Date();
+    const now = startOfLocalDay(new Date());
     const startDate = new Date(now);
     startDate.setDate(startDate.getDate() - startDate.getDay());
     startDate.setDate(startDate.getDate() - (weeks - 1) * 7);
 
-    const visibleKeys = [];
-    for (let i = 0; i < weeks * 7; i += 1) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
-      if (date <= now) visibleKeys.push(dateKeyFromDate(date));
-    }
-    const allCounts = visibleKeys.map((key) => dailyCounts[key] || 0).filter((count) => count > 0);
-    allCounts.sort((a, b) => a - b);
+    const heatmapThresholds = [499, 999, 1999, 2999, 3999, 4999, 5999, 6999, 7999, 9999, 11999];
 
     function getLevel(count) {
       if (!count || count === 0) return 0;
-      if (allCounts.length === 0) return 1;
-      const p25 = allCounts[Math.floor(allCounts.length * 0.25)];
-      const p50 = allCounts[Math.floor(allCounts.length * 0.5)];
-      const p75 = allCounts[Math.floor(allCounts.length * 0.75)];
-      if (count <= p25) return 1;
-      if (count <= p50) return 2;
-      if (count <= p75) return 3;
-      return 4;
+      const levelIndex = heatmapThresholds.findIndex((threshold) => count <= threshold);
+      return levelIndex === -1 ? heatmapThresholds.length + 1 : levelIndex + 1;
     }
 
     function showTooltip(cell, date, count, duration, sessions) {
@@ -1104,7 +1211,7 @@
         const date = new Date(startDate);
         date.setDate(date.getDate() + w * 7 + d);
 
-        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+        const key = dateKeyFromDate(date);
         const count = dailyCounts[key] || 0;
 
         const cell = document.createElement("button");
@@ -1201,7 +1308,10 @@
       row.className = "history-item";
       const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
-      const meta = item.durationMs ? ` · ${formatDurationMs(item.durationMs)}` : "";
+      const metaParts = [];
+      if (item.durationMs) metaParts.push(formatDurationMs(item.durationMs));
+      metaParts.push(formatCharacters(item.chars));
+      const meta = metaParts.length > 0 ? ` · ${metaParts.join(" · ")}` : "";
       row.innerHTML =
         `<div class="history-head"><span class="history-time">${time}${meta}</span>` +
         '<div class="history-actions">' +
@@ -1216,6 +1326,7 @@
       copyBtn?.addEventListener("click", async () => {
         await window.voiceSettings.copyText(item.text || "");
         copyBtn.classList.add("is-done");
+        showHistoryCopyToast(copyBtn);
         copyBtn.title = "已复制";
         setTimeout(() => {
           copyBtn.classList.remove("is-done");
@@ -1224,7 +1335,8 @@
       });
 
       deleteBtn?.addEventListener("click", async () => {
-        if (!confirm("确定删除这条输入记录吗？")) return;
+        const confirmed = await confirmHistoryDelete(item);
+        if (!confirmed) return;
         const result = await window.voiceSettings.deleteHistoryItem(item.id);
         if (result?.ok) {
           await loadHomeData();
@@ -1349,6 +1461,24 @@ SOFTWARE.`;
         document.querySelectorAll(".theme-btn").forEach((b) => {
           b.classList.toggle("active", b.dataset.themeVal === currentThemePreference);
         });
+      }
+    });
+  });
+
+  // Accent theme buttons
+  document.querySelectorAll(".accent-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const preference = normalizeAccentTheme(btn.dataset.accentVal);
+      updateAccentButtons(preference);
+      applyAccentTheme(preference);
+      try {
+        const result = await window.voiceSettings.setAccentTheme(preference);
+        currentAccentTheme = normalizeAccentTheme(result.preference);
+        applyAccentTheme(currentAccentTheme);
+        updateAccentButtons(currentAccentTheme);
+      } catch (_err) {
+        applyAccentTheme(currentAccentTheme);
+        updateAccentButtons(currentAccentTheme);
       }
     });
   });
@@ -1747,18 +1877,18 @@ SOFTWARE.`;
   // ===== Overlay Appearance =====
 
   const OVERLAY_DEFAULTS = {
-    background_color: "#121212",
-    background_opacity: 0.68,
-    border_color: "#8e8e93",
-    border_width: 1,
+    background_color: "#0d0c0c",
+    background_opacity: 0.9,
+    border_color: "#ffffff",
+    border_width: 0,
     border_radius: 16,
-    font_family: "",
+    font_family: "DengXian",
     font_size: 16,
-    font_weight: 500,
-    text_color: "#ffffff",
+    font_weight: 400,
+    text_color: "#34da66",
     partial_text_color: "#ffffff",
-    partial_text_opacity: 0.58,
-    waveform_color: "#000000",
+    partial_text_opacity: 0.64,
+    waveform_color: "#29ee63",
     max_width: 680,
   };
 
@@ -2022,7 +2152,10 @@ SOFTWARE.`;
   function setSliderField(baseId, value, unit) {
     const input = oaEl(baseId);
     const label = oaEl(`${baseId}-label`);
-    if (input) input.value = value;
+    if (input) {
+      input.value = value;
+      updateRangeProgress(input);
+    }
     if (label) label.textContent = unit ? `${value} ${unit}` : String(value);
   }
 
@@ -2165,6 +2298,7 @@ SOFTWARE.`;
       const val = decimals > 0 ? Number(input.value).toFixed(decimals) : input.value;
       label.textContent = unit ? `${val} ${unit}` : val;
     }
+    updateRangeProgress(input);
     onOverlayFieldChange();
   }
 

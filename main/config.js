@@ -164,6 +164,10 @@ function normalizeSoundVolume(value) {
   return Math.max(0, Math.min(1, volume));
 }
 
+function normalizeAccentTheme(value) {
+  return value === "green" ? "green" : "purple";
+}
+
 /**
  * loadConfig() 返回与 config.yaml / 官方 API 文档完全一致的字段名（snake_case）。
  * 新增 API 参数只需在 config.yaml 中添加，loadConfig 会自动透传。
@@ -178,6 +182,7 @@ function loadConfig() {
       hotkey_mode: raw.app?.hotkey_mode === "hold" ? "hold" : "toggle",
       remove_trailing_period: raw.app?.remove_trailing_period !== false,
       theme: raw.app?.theme || "system",
+      accent_theme: normalizeAccentTheme(raw.app?.accent_theme),
     },
     sounds: {
       ...(raw.sounds || {}),
@@ -324,18 +329,18 @@ function getEditableConfig() {
 }
 
 const OVERLAY_DEFAULTS = {
-  background_color: "#121212",
-  background_opacity: 0.68,
-  border_color: "#8e8e93",
-  border_width: 1,
+  background_color: "#0d0c0c",
+  background_opacity: 0.9,
+  border_color: "#ffffff",
+  border_width: 0,
   border_radius: 16,
-  font_family: "",
+  font_family: "DengXian",
   font_size: 16,
-  font_weight: 500,
-  text_color: "#ffffff",
+  font_weight: 400,
+  text_color: "#34da66",
   partial_text_color: "#ffffff",
-  partial_text_opacity: 0.58,
-  waveform_color: "#000000",
+  partial_text_opacity: 0.64,
+  waveform_color: "#29ee63",
   max_width: 680,
 };
 

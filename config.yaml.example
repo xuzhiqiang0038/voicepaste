@@ -4,6 +4,7 @@ app:
   remove_trailing_period: true   # 自动删除识别结果末尾的句号（。或 .）
   keep_clipboard: true           # 保留识别结果在剪贴板，便于失败后手动再次粘贴
   theme: system                  # 外观主题：dark / light / system（跟随系统）
+  accent_theme: purple           # 重点色系统：purple / green
 
 sounds:
   enabled: true                  # 启用提示音总开关
@@ -12,18 +13,18 @@ sounds:
   volume: 0.72                   # 提示音音量 0~1
 
 overlay:
-  background_color: "#121212"   # 气泡背景色（十六进制）
-  background_opacity: 0.68      # 气泡背景透明度 0~1
-  border_color: "#8e8e93"       # 边框颜色（十六进制）
-  border_width: 1               # 边框宽度 px，0 = 无边框
+  background_color: "#0d0c0c"   # 气泡背景色（十六进制）
+  background_opacity: 0.9       # 气泡背景透明度 0~1
+  border_color: "#ffffff"       # 边框颜色（十六进制）
+  border_width: 0               # 边框宽度 px，0 = 无边框
   border_radius: 16             # 圆角半径 px
-  font_family: ""               # 字体名称，留空使用系统默认（微软雅黑等）
+  font_family: DengXian         # 字体名称，留空使用系统默认（微软雅黑等）
   font_size: 16                 # 字号 px
-  font_weight: 500              # 字重：300 / 400 / 500 / 600 / 700
-  text_color: "#ffffff"         # 已识别文字颜色
+  font_weight: 400              # 字重：300 / 400 / 500 / 600 / 700
+  text_color: "#34da66"         # 已识别文字颜色
   partial_text_color: "#ffffff" # 识别中文字颜色
-  partial_text_opacity: 0.58    # 识别中文字透明度 0~1
-  waveform_color: "#000000"     # 波形动画颜色
+  partial_text_opacity: 0.64    # 识别中文字透明度 0~1
+  waveform_color: "#29ee63"     # 波形动画颜色
   max_width: 680                # 气泡最大宽度 px
 
 overlay_active_preset: default   # 当前浮层外观方案：default / preset_1 / preset_2 / preset_3

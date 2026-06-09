@@ -2,8 +2,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { app } = require("electron");
 
-const STATS_SCHEMA_VERSION = 2;
+const STATS_SCHEMA_VERSION = 3;
 const HISTORY_FILE_PATTERN = /^\d{4}-\d{2}-\d{2}\.jsonl$/;
+const COUNTABLE_CHARACTER_PATTERN = /[\p{L}\p{N}]/u;
 
 let dataDir = null;
 let historyDir = null;
@@ -32,6 +33,11 @@ function defaultStats() {
     dailyDurations: {},
     dailySessions: {},
   };
+}
+
+function countInputCharacters(text) {
+  if (typeof text !== "string" || !text) return 0;
+  return Array.from(text).filter((character) => COUNTABLE_CHARACTER_PATTERN.test(character)).length;
 }
 
 function normalizeDailyMap(value) {
@@ -148,7 +154,7 @@ function hashHistoryEntry(entry) {
 
 function normalizeHistoryEntry(entry, dateKey, lineIndex) {
   const text = typeof entry?.text === "string" ? entry.text : "";
-  const chars = Number.isFinite(entry?.chars) ? Number(entry.chars) : text.length;
+  const chars = countInputCharacters(text);
   const durationMs = Number(entry?.durationMs || 0);
   return {
     ...entry,
@@ -160,13 +166,17 @@ function normalizeHistoryEntry(entry, dateKey, lineIndex) {
   };
 }
 
-function readHistoryAggregates() {
+function readHistorySnapshot(options = {}) {
   ensureHistoryDir();
 
-  const aggregates = {
+  const snapshot = {
+    totalSessions: 0,
+    totalCharacters: 0,
+    totalDurationMs: 0,
     dailyCounts: {},
     dailyDurations: {},
     dailySessions: {},
+    firstUsedAt: null,
   };
 
   const files = fs
@@ -190,49 +200,83 @@ function readHistoryAggregates() {
       try {
         const entry = normalizeHistoryEntry(JSON.parse(lines[lineIndex]), dateKey, lineIndex);
         if (!entry.text) continue;
-        aggregates.dailyCounts[dateKey] =
-          (aggregates.dailyCounts[dateKey] || 0) + Number(entry.chars || entry.text.length);
-        aggregates.dailyDurations[dateKey] =
-          (aggregates.dailyDurations[dateKey] || 0) + Number(entry.durationMs || 0);
-        aggregates.dailySessions[dateKey] = (aggregates.dailySessions[dateKey] || 0) + 1;
+        snapshot.totalSessions += 1;
+        snapshot.totalCharacters += entry.chars;
+        snapshot.totalDurationMs += Number(entry.durationMs || 0);
+        snapshot.dailyCounts[dateKey] = (snapshot.dailyCounts[dateKey] || 0) + entry.chars;
+        snapshot.dailyDurations[dateKey] =
+          (snapshot.dailyDurations[dateKey] || 0) + Number(entry.durationMs || 0);
+        snapshot.dailySessions[dateKey] = (snapshot.dailySessions[dateKey] || 0) + 1;
+
+        if (!snapshot.firstUsedAt || entry.ts < snapshot.firstUsedAt) {
+          snapshot.firstUsedAt = entry.ts;
+        }
       } catch {
         // Skip malformed history lines during migration.
       }
     }
   }
 
-  return aggregates;
+  if (options.rewriteHistory) {
+    rewriteHistoryCharacterCounts(files);
+  }
+
+  return snapshot;
+}
+
+function rewriteHistoryCharacterCounts(files) {
+  for (const fileName of files) {
+    const dateKey = fileName.replace(/\.jsonl$/, "");
+    const filePath = path.join(historyDir, fileName);
+    let lines;
+    try {
+      const raw = fs.readFileSync(filePath, "utf8").trim();
+      if (!raw) continue;
+      lines = raw.split("\n");
+    } catch {
+      continue;
+    }
+
+    let changed = false;
+    const nextLines = lines.map((line, lineIndex) => {
+      try {
+        const parsed = JSON.parse(line);
+        const normalized = normalizeHistoryEntry(parsed, dateKey, lineIndex);
+        if (parsed.chars !== normalized.chars) {
+          changed = true;
+        }
+        return JSON.stringify(normalized);
+      } catch {
+        return line;
+      }
+    });
+
+    if (changed) {
+      fs.writeFileSync(filePath, `${nextLines.join("\n")}\n`, "utf8");
+    }
+  }
 }
 
 function migrateStats(previousStats) {
-  const migrated = {
-    ...previousStats,
+  const recovered = readHistorySnapshot({ rewriteHistory: true });
+  if (recovered.totalSessions === 0 && Number(previousStats.totalSessions || 0) > 0) {
+    return {
+      ...previousStats,
+      schemaVersion: STATS_SCHEMA_VERSION,
+    };
+  }
+
+  return {
+    ...defaultStats(),
     schemaVersion: STATS_SCHEMA_VERSION,
-    dailyCounts: { ...previousStats.dailyCounts },
-    dailyDurations: { ...previousStats.dailyDurations },
-    dailySessions: { ...previousStats.dailySessions },
+    firstUsedAt: previousStats.firstUsedAt || recovered.firstUsedAt,
+    totalSessions: recovered.totalSessions,
+    totalCharacters: recovered.totalCharacters,
+    totalDurationMs: recovered.totalDurationMs,
+    dailyCounts: recovered.dailyCounts,
+    dailyDurations: recovered.dailyDurations,
+    dailySessions: recovered.dailySessions,
   };
-  const recovered = readHistoryAggregates();
-
-  for (const [key, count] of Object.entries(recovered.dailyCounts)) {
-    migrated.dailyCounts[key] = count;
-  }
-  for (const [key, count] of Object.entries(recovered.dailySessions)) {
-    migrated.dailySessions[key] = count;
-  }
-  for (const [key, duration] of Object.entries(recovered.dailyDurations)) {
-    if (!migrated.dailyDurations[key] && duration > 0) {
-      migrated.dailyDurations[key] = duration;
-    }
-  }
-
-  for (const [key, count] of Object.entries(migrated.dailyCounts)) {
-    if (count > 0 && !migrated.dailySessions[key]) {
-      migrated.dailySessions[key] = 1;
-    }
-  }
-
-  return migrated;
 }
 
 function initStatsService() {
@@ -245,7 +289,7 @@ function recordSession(text, options = {}) {
 
   const s = loadStats();
   const now = new Date();
-  const charCount = text.length;
+  const charCount = countInputCharacters(text);
   const durationMs = Math.max(0, Math.round(Number(options.durationMs || 0)));
 
   if (!s.firstUsedAt) {
@@ -317,16 +361,6 @@ function getHistory(daysBack) {
   return allItems;
 }
 
-function subtractStatValue(map, key, amount) {
-  if (!map || !key || !amount) return;
-  const nextValue = Math.max(0, Number(map[key] || 0) - amount);
-  if (nextValue > 0) {
-    map[key] = nextValue;
-  } else {
-    delete map[key];
-  }
-}
-
 function deleteHistoryItem(id) {
   if (!id) return { ok: false };
   ensureHistoryDir();
@@ -372,17 +406,19 @@ function deleteHistoryItem(id) {
       .map((entry) => (typeof entry === "string" ? entry : JSON.stringify(entry)))
       .join("\n");
     fs.writeFileSync(filePath, nextContent ? `${nextContent}\n` : "", "utf8");
-
-    const s = loadStats();
-    const removedChars = Number(removed.chars || removed.text.length || 0);
-    const removedDuration = Number(removed.durationMs || 0);
-
-    s.totalSessions = Math.max(0, Number(s.totalSessions || 0) - 1);
-    s.totalCharacters = Math.max(0, Number(s.totalCharacters || 0) - removedChars);
-    s.totalDurationMs = Math.max(0, Number(s.totalDurationMs || 0) - removedDuration);
-    subtractStatValue(s.dailyCounts, dateKey, removedChars);
-    subtractStatValue(s.dailyDurations, dateKey, removedDuration);
-    subtractStatValue(s.dailySessions, dateKey, 1);
+    const previousStats = loadStats();
+    const recovered = readHistorySnapshot();
+    stats = {
+      ...defaultStats(),
+      schemaVersion: STATS_SCHEMA_VERSION,
+      firstUsedAt: previousStats.firstUsedAt || recovered.firstUsedAt,
+      totalSessions: recovered.totalSessions,
+      totalCharacters: recovered.totalCharacters,
+      totalDurationMs: recovered.totalDurationMs,
+      dailyCounts: recovered.dailyCounts,
+      dailyDurations: recovered.dailyDurations,
+      dailySessions: recovered.dailySessions,
+    };
     flushStats();
 
     return { ok: true };

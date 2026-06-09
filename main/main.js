@@ -1359,6 +1359,7 @@ app.whenReady().then(() => {
           preference: currentConfig.app?.theme || "system",
           resolved: resolveTheme(),
         },
+        accentTheme: currentConfig.app?.accent_theme || "purple",
       },
     };
   });
@@ -1499,6 +1500,18 @@ app.whenReady().then(() => {
     const resolved = resolveTheme();
     applySettingsTitleBarOverlay();
     return { preference, resolved };
+  });
+
+  ipcMain.handle("settings:set-accent-theme", async (_event, preference) => {
+    if (!["purple", "green"].includes(preference)) {
+      throw new Error("Invalid accent theme");
+    }
+    const config = getEditableConfig();
+    config.app = config.app || {};
+    config.app.accent_theme = preference;
+    saveConfig(config);
+    reloadRuntimeConfig();
+    return { preference };
   });
 
   ipcMain.handle("stats:get", async () => {
