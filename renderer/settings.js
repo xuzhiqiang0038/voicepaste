@@ -1178,7 +1178,7 @@
     startDate.setDate(startDate.getDate() - startDate.getDay());
     startDate.setDate(startDate.getDate() - (weeks - 1) * 7);
 
-    const heatmapThresholds = [499, 999, 1999, 2999, 3999, 4999, 5999, 6999, 7999, 9999, 11999];
+    const heatmapThresholds = [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500];
 
     function getLevel(count) {
       if (!count || count === 0) return 0;
