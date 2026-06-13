@@ -36,6 +36,12 @@ No test framework is configured.
 - After any code change, run `pnpm check` to ensure no lint or formatting issues remain before committing — this catches problems early and keeps the codebase consistent
 - Fix all errors and warnings reported by Biome before considering a task complete
 
+## 进度跟踪
+
+- 做语料库、原始识别文本、历史记录、导出、分析相关需求前，必须先读 `CHECKPOINT.md`。
+- 完成、跳过、阻塞、重新定义任何语料库/历史/分析事项后，必须在最终回复前更新 `CHECKPOINT.md`。
+- `CHECKPOINT.md` 必须让用户和后续 agent 都看得懂：标记已完成事项，记录被阻塞的决策，并在需要时补充验证结果。
+
 ## Code Commit Convention
 
 - Commit message prefixes must use Conventional Commit style, such as `fix:`, `feat:`, `refactor:`, `docs:`
