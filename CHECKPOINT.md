@@ -44,7 +44,7 @@
 
 - `pnpm check` 通过。
 - `node scripts/inspectLatestHistory.js` 通过；当前最新磁盘记录仍是旧 schema，脚本能派生 `rawText/finalText` 并显示 `storageSchemaComplete: false`。
-- 待用户录入新的普通语音和润色语音后，再运行 `node scripts/inspectLatestHistory.js` 复核新记录应显示 `storageSchemaComplete: true`，并确认 `mode=normal/polish`。
+- 用户重启开发版并录入新语音后已复核：`2026-06-13.jsonl` 第 103-107 行均显示 `storageSchemaComplete: true`；第 103-104 行为 `mode=polish`，含 `promptId=prompt-general`、`llmProvider=deepseek`、`llmModel=deepseek-v4-flash`；第 105-107 行为 `mode=normal`。检查过程未打印正文内容。
 
 建议的新历史记录结构：
 
