@@ -903,7 +903,8 @@ async function finishRecordingFlow() {
   logInfo("finish recording flow");
   const durationMs = recordingStartedAt ? Math.max(0, Date.now() - recordingStartedAt) : 0;
 
-  if (!asrSession?.isReady()) {
+  const session = asrSession;
+  if (!session?.isReady()) {
     logError("finish failed because asr not ready");
     await cleanupSession();
     hideOverlay();
@@ -931,9 +932,9 @@ async function finishRecordingFlow() {
   }
 
   try {
-    const finalText = await asrSession.commitAndAwaitFinal();
     expectingSessionClose = true;
-    const transcriptSnapshot = asrSession.getTranscriptSnapshot();
+    const finalText = await session.commitAndAwaitFinal();
+    const transcriptSnapshot = session.getTranscriptSnapshot();
     let textToPaste = (
       transcriptSnapshot.latestResultText ||
       finalText ||
