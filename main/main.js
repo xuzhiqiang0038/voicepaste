@@ -51,12 +51,17 @@ const {
 } = require("./updateService");
 
 let currentConfig = loadConfig();
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
 const ESC_HOTKEY = "Esc";
 const DEBOUNCE_MS = 200;
 const STALE_KEY_MS = 5000;
 const HOLD_TRIGGER_DELAY_MS = 300;
 const ERROR_OVERLAY_MS = 2000;
 const AUDIO_INPUT_MISSING_MESSAGE = "未检测到语音，请检查麦克风";
+
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
 
 const pressedKeys = new Map();
 
@@ -633,6 +638,7 @@ let wsReady = false;
 let audioWarmupReady = false;
 let lastAudioStopHadSignal = false;
 let recordingStartedAt = 0;
+let isStartRecordingFlowPending = false;
 
 function getHotkey() {
   return currentConfig.app.hotkey;
@@ -851,11 +857,23 @@ async function abortRecordingWithHint(message, options = {}) {
 }
 
 async function startRecordingFlow(options = {}) {
-  if (appState !== "idle") {
-    logInfo("start ignored", { appState });
+  if (appState !== "idle" || isStartRecordingFlowPending) {
+    logInfo("start ignored", {
+      appState,
+      pending: isStartRecordingFlowPending,
+    });
     return;
   }
 
+  isStartRecordingFlowPending = true;
+  try {
+    await runStartRecordingFlow(options);
+  } finally {
+    isStartRecordingFlowPending = false;
+  }
+}
+
+async function runStartRecordingFlow(options = {}) {
   logInfo("start recording flow", { promptId: options.promptId || "" });
 
   // Reload config to pick up any changes made in settings since last save
@@ -1286,7 +1304,18 @@ function createTray() {
   });
 }
 
-app.whenReady().then(() => {
+if (gotSingleInstanceLock) {
+  app.on("second-instance", () => {
+    logInfo("second instance requested", { pid: process.pid });
+    if (app.isReady()) {
+      showSettingsWindow();
+      return;
+    }
+    app.whenReady().then(showSettingsWindow);
+  });
+}
+
+function initializeApp() {
   logInfo("app ready", {
     hotkey: getHotkey(),
     logPath: resolveLogPath(),
@@ -1660,7 +1689,11 @@ app.whenReady().then(() => {
     }
     showSettingsWindow();
   });
-});
+}
+
+if (gotSingleInstanceLock) {
+  app.whenReady().then(initializeApp);
+}
 
 app.on("window-all-closed", (event) => {
   event.preventDefault();
