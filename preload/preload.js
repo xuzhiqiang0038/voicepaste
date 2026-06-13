@@ -103,6 +103,21 @@ contextBridge.exposeInMainWorld("voiceSettings", {
   deleteHistoryItem(id) {
     return ipcRenderer.invoke("stats:delete-history-item", id);
   },
+  queryCorpus(options) {
+    return ipcRenderer.invoke("corpus:query", options);
+  },
+  exportCorpus(payload) {
+    return ipcRenderer.invoke("corpus:export", payload);
+  },
+  chooseAnalysisPackageDir() {
+    return ipcRenderer.invoke("analysis-package:choose-dir");
+  },
+  generateAnalysisPackage(payload) {
+    return ipcRenderer.invoke("analysis-package:generate", payload);
+  },
+  openAnalysisPackageDir(directoryPath) {
+    return ipcRenderer.invoke("analysis-package:open-dir", directoryPath);
+  },
   copyText(text) {
     return ipcRenderer.invoke("settings:copy-text", text);
   },

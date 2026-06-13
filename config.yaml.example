@@ -109,3 +109,6 @@ llm:
     url: ""
     api_key: ""
     model: ""
+
+analysis_package:
+  output_dir: ""               # 分析包长期存放目录；首次生成分析包时可在界面中选择

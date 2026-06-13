@@ -321,6 +321,10 @@ function loadConfig() {
         model: raw.llm?.openai_compatible?.model || raw.llm?.model || "",
       },
     },
+    analysis_package: {
+      ...(raw.analysis_package || {}),
+      output_dir: String(raw.analysis_package?.output_dir || ""),
+    },
   };
 }
 

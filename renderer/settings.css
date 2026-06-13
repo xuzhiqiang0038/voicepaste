@@ -1532,6 +1532,135 @@ kbd {
   height: 11px;
 }
 
+/* ===== Corpus ===== */
+
+.corpus-tabs {
+  margin-bottom: 14px;
+}
+
+.corpus-filter-card {
+  margin-bottom: 14px;
+  padding: 16px 18px;
+}
+
+.corpus-filter-grid {
+  display: grid;
+  grid-template-columns: 130px repeat(3, minmax(120px, 1fr)) minmax(180px, 1.4fr);
+  gap: 10px;
+}
+
+.corpus-field {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.corpus-field .input-field {
+  width: 100%;
+}
+
+.corpus-panel.hidden {
+  display: none;
+}
+
+.corpus-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 10px;
+}
+
+.corpus-status {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.corpus-record-detail {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.corpus-record-detail[hidden] {
+  display: none;
+}
+
+.corpus-record-label {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.corpus-record-text,
+.corpus-record-meta {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.corpus-record-meta {
+  font-family: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+  font-size: 11px;
+}
+
+.corpus-format-select {
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.corpus-path-row,
+.corpus-action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.corpus-path {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  background: var(--input-bg);
+  color: var(--text-muted);
+  font-family: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.corpus-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 12px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.corpus-target-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.corpus-checkbox-grid label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 /* ===== Home: History ===== */
 
 .history-list {
@@ -2110,4 +2239,23 @@ kbd {
 #section-overlay-appearance select:disabled {
   cursor: not-allowed;
   opacity: 0.58;
+}
+
+@media (max-width: 900px) {
+  .corpus-filter-grid,
+  .corpus-checkbox-grid,
+  .corpus-target-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .corpus-path-row,
+  .corpus-action-row,
+  .corpus-panel-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .corpus-format-select {
+    width: 100%;
+  }
 }

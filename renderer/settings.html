@@ -27,6 +27,10 @@
             <span class="nav-icon" data-icon="chart-no-axes-column"></span>
             <span>使用统计</span>
           </div>
+          <div class="nav-item" data-section="corpus">
+            <span class="nav-icon" data-icon="file-code-2"></span>
+            <span>语料库</span>
+          </div>
           <div class="nav-divider"></div>
           <div class="nav-group-label">设置</div>
           <div class="nav-item" data-section="hotkey">
@@ -243,6 +247,179 @@
                 <span class="heatmap-legend-cell level-9"></span>
                 <span class="heatmap-legend-cell level-12"></span>
                 <span>多</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 语料库 -->
+          <section class="section hidden" id="section-corpus">
+            <div class="section-header">
+              <div>
+                <div class="section-title">语料库</div>
+                <div class="section-subtitle">浏览、导出 raw/final 语音输入记录</div>
+              </div>
+            </div>
+
+            <div class="corpus-tabs seg-control" id="corpusTabs" role="tablist">
+              <button
+                type="button"
+                class="seg-btn active"
+                data-corpus-tab="records"
+                role="tab"
+                aria-selected="true"
+              >
+                记录
+              </button>
+              <button
+                type="button"
+                class="seg-btn"
+                data-corpus-tab="export"
+                role="tab"
+                aria-selected="false"
+              >
+                导出
+              </button>
+              <button
+                type="button"
+                class="seg-btn"
+                data-corpus-tab="package"
+                role="tab"
+                aria-selected="false"
+              >
+                分析包
+              </button>
+            </div>
+
+            <div class="section-card corpus-filter-card">
+              <div class="corpus-filter-grid">
+                <label class="corpus-field">
+                  <span>日期范围</span>
+                  <select class="input-field" id="corpusRangePreset">
+                    <option value="today">今天</option>
+                    <option value="7" selected>近 7 天</option>
+                    <option value="30">近 30 天</option>
+                    <option value="custom">自定义</option>
+                  </select>
+                </label>
+                <label class="corpus-field">
+                  <span>开始日期</span>
+                  <input type="date" class="input-field" id="corpusStartDate" />
+                </label>
+                <label class="corpus-field">
+                  <span>结束日期</span>
+                  <input type="date" class="input-field" id="corpusEndDate" />
+                </label>
+                <label class="corpus-field">
+                  <span>模式</span>
+                  <select class="input-field" id="corpusMode">
+                    <option value="all">全部</option>
+                    <option value="normal">普通识别</option>
+                    <option value="polish">润色</option>
+                  </select>
+                </label>
+                <label class="corpus-field corpus-search-field">
+                  <span>搜索</span>
+                  <input
+                    type="search"
+                    class="input-field"
+                    id="corpusSearch"
+                    placeholder="搜索 raw 或 final"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div class="corpus-panel" id="corpusPanelRecords">
+              <div class="corpus-panel-head">
+                <div class="corpus-status" id="corpusRecordsStatus">-</div>
+                <button type="button" class="btn btn-sm" id="corpusRefreshBtn">刷新</button>
+              </div>
+              <div class="history-list corpus-list" id="corpusRecordsList"></div>
+            </div>
+
+            <div class="corpus-panel hidden" id="corpusPanelExport">
+              <div class="section-card">
+                <div class="row">
+                  <div class="row-label">
+                    <div class="title">导出格式</div>
+                    <div class="desc">导出会使用上方日期范围和模式筛选</div>
+                  </div>
+                  <select class="input-field corpus-format-select" id="corpusExportFormat">
+                    <option value="jsonl">JSONL</option>
+                    <option value="markdown">Markdown</option>
+                    <option value="csv">CSV</option>
+                  </select>
+                </div>
+                <div class="row">
+                  <div class="row-label">
+                    <div class="title">导出语料</div>
+                    <div class="desc" id="corpusExportStatus">选择一个文件夹保存导出文件</div>
+                  </div>
+                  <button type="button" class="btn btn-accent" id="corpusExportBtn">
+                    导出
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="corpus-panel hidden" id="corpusPanelPackage">
+              <div class="section-card">
+                <div class="row vertical">
+                  <div class="row-label">
+                    <div class="title">分析包目录</div>
+                    <div class="desc">
+                      用来长期保存语料包和提示词；首次生成时会引导选择，之后可随时修改。
+                    </div>
+                  </div>
+                  <div class="corpus-path-row">
+                    <div class="corpus-path" id="analysisPackageDir">未设置</div>
+                    <button type="button" class="btn btn-sm" id="chooseAnalysisPackageDirBtn">
+                      选择文件夹
+                    </button>
+                  </div>
+                </div>
+                <div class="row vertical">
+                  <div class="row-label">
+                    <div class="title">包含字段</div>
+                  </div>
+                  <div class="corpus-checkbox-grid">
+                    <label><input type="checkbox" id="packageIncludeRaw" checked /> rawText</label>
+                    <label><input type="checkbox" id="packageIncludeFinal" checked /> finalText</label>
+                    <label><input type="checkbox" id="packageIncludeMetadata" checked /> 元数据</label>
+                  </div>
+                </div>
+                <div class="row vertical">
+                  <div class="row-label">
+                    <div class="title">分析目标</div>
+                  </div>
+                  <div class="corpus-checkbox-grid corpus-target-grid">
+                    <label><input type="checkbox" data-analysis-target="vocabulary" checked /> 高频词和个人词库</label>
+                    <label><input type="checkbox" data-analysis-target="asr" checked /> ASR 误识别</label>
+                    <label><input type="checkbox" data-analysis-target="speaking" checked /> 口语习惯</label>
+                    <label><input type="checkbox" data-analysis-target="topics" checked /> 主题分布</label>
+                    <label><input type="checkbox" data-analysis-target="polish" checked /> 润色收益</label>
+                    <label><input type="checkbox" data-analysis-target="efficiency" checked /> 输入效率</label>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="row-label">
+                    <div class="title">生成分析包</div>
+                    <div class="desc" id="analysisPackageStatus">
+                      生成后可把目录交给 Claude Code / Codex / GPT 分析，不会调用内置模型。
+                    </div>
+                  </div>
+                  <div class="corpus-action-row">
+                    <button type="button" class="btn btn-accent" id="generateAnalysisPackageBtn">
+                      生成
+                    </button>
+                    <button type="button" class="btn btn-sm" id="copyAnalysisPromptBtn" disabled>
+                      复制提示词
+                    </button>
+                    <button type="button" class="btn btn-sm" id="openAnalysisPackageBtn" disabled>
+                      打开目录
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </section>

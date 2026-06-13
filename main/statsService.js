@@ -5,6 +5,7 @@ const { app } = require("electron");
 const STATS_SCHEMA_VERSION = 3;
 const HISTORY_FILE_PATTERN = /^\d{4}-\d{2}-\d{2}\.jsonl$/;
 const COUNTABLE_CHARACTER_PATTERN = /[\p{L}\p{N}]/u;
+const HISTORY_SEARCH_FIELDS = ["text", "rawText", "finalText"];
 
 let dataDir = null;
 let historyDir = null;
@@ -106,6 +107,50 @@ function dateKeyFromDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function parseDateKey(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return dateKeyFromDate(date);
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function dateKeysBetween(startKey, endKey) {
+  const start = new Date(`${startKey}T00:00:00`);
+  const end = new Date(`${endKey}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return [];
+  }
+
+  const keys = [];
+  const direction = start <= end ? 1 : -1;
+  for (
+    let date = start;
+    direction > 0 ? date <= end : date >= end;
+    date = addDays(date, direction)
+  ) {
+    keys.push(dateKeyFromDate(date));
+  }
+  return direction > 0 ? keys : keys.reverse();
+}
+
+function normalizeHistoryMode(mode) {
+  if (mode === "normal" || mode === "polish") {
+    return mode;
+  }
+  return "unknown";
+}
+
 function flushStats() {
   try {
     fs.writeFileSync(statsPath(), JSON.stringify(stats, null, 2), "utf8");
@@ -198,9 +243,35 @@ function normalizeHistoryEntry(entry, dateKey, lineIndex) {
     text,
     rawText,
     finalText,
+    mode: normalizeHistoryMode(entry?.mode),
+    promptId: entry?.promptId || null,
+    llmProvider: entry?.llmProvider || null,
+    llmModel: entry?.llmModel || null,
     chars,
     ...(durationMs > 0 ? { durationMs } : {}),
   };
+}
+
+function readHistoryEntriesForDate(dateKey) {
+  const filePath = path.join(historyDir, `${dateKey}.jsonl`);
+  const entries = [];
+
+  try {
+    const raw = fs.readFileSync(filePath, "utf8").trim();
+    if (!raw) return entries;
+    const lines = raw.split("\n");
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+      try {
+        entries.push(normalizeHistoryEntry(JSON.parse(lines[lineIndex]), dateKey, lineIndex));
+      } catch {
+        // skip malformed lines
+      }
+    }
+  } catch {
+    // file doesn't exist, skip
+  }
+
+  return entries;
 }
 
 function readHistorySnapshot(options = {}) {
@@ -384,27 +455,68 @@ function getHistory(daysBack) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const filePath = path.join(historyDir, `${key}.jsonl`);
 
-    try {
-      const raw = fs.readFileSync(filePath, "utf8").trim();
-      if (!raw) continue;
-      const lines = raw.split("\n");
-      for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
-        const line = lines[lineIndex];
-        try {
-          allItems.push(normalizeHistoryEntry(JSON.parse(line), key, lineIndex));
-        } catch {
-          // skip malformed lines
-        }
-      }
-    } catch {
-      // file doesn't exist, skip
-    }
+    allItems.push(...readHistoryEntriesForDate(key));
   }
 
   allItems.sort((a, b) => (a.ts > b.ts ? -1 : 1));
   return allItems;
+}
+
+function queryHistory(options = {}) {
+  ensureHistoryDir();
+  flushPendingWrites();
+
+  const today = new Date();
+  const fallbackEnd = dateKeyFromDate(today);
+  const fallbackStart = dateKeyFromDate(addDays(today, -6));
+  let startKey = parseDateKey(options.startDate) || fallbackStart;
+  let endKey = parseDateKey(options.endDate) || fallbackEnd;
+  if (startKey > endKey) {
+    [startKey, endKey] = [endKey, startKey];
+  }
+
+  const mode = ["normal", "polish"].includes(options.mode) ? options.mode : "all";
+  const search = String(options.search || "")
+    .trim()
+    .toLowerCase();
+  const allItems = [];
+
+  for (const key of dateKeysBetween(startKey, endKey)) {
+    allItems.push(...readHistoryEntriesForDate(key));
+  }
+
+  const filtered = allItems.filter((item) => {
+    if (mode !== "all" && item.mode !== mode) {
+      return false;
+    }
+    if (!search) {
+      return true;
+    }
+
+    return HISTORY_SEARCH_FIELDS.some((field) =>
+      String(item[field] || "")
+        .toLowerCase()
+        .includes(search),
+    );
+  });
+
+  filtered.sort((a, b) => {
+    if (options.order === "asc") {
+      return a.ts > b.ts ? 1 : -1;
+    }
+    return a.ts > b.ts ? -1 : 1;
+  });
+
+  return {
+    items: filtered,
+    range: {
+      startDate: startKey,
+      endDate: endKey,
+    },
+    mode,
+    search,
+  };
 }
 
 function deleteHistoryItem(id) {
@@ -468,6 +580,7 @@ module.exports = {
   recordSession,
   getStats,
   getHistory,
+  queryHistory,
   deleteHistoryItem,
   closeStatsService,
 };

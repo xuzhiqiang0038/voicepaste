@@ -7,6 +7,10 @@
   let currentAccentTheme = "purple";
   let currentHotkeyMode = "toggle";
   let currentLlmProvider = "deepseek";
+  let currentCorpusTab = "records";
+  let corpusQueryTimer = null;
+  let lastAnalysisPromptText = "";
+  let lastAnalysisPackageDir = "";
   let hasAutoCheckedUpdates = false;
   let statsRefreshTimer = null;
 
@@ -231,6 +235,27 @@
     toggleLlmApiKey: $("toggleLlmApiKey"),
     promptsList: $("promptsList"),
     addPromptBtn: $("addPromptBtn"),
+    corpusTabs: $("corpusTabs"),
+    corpusRangePreset: $("corpusRangePreset"),
+    corpusStartDate: $("corpusStartDate"),
+    corpusEndDate: $("corpusEndDate"),
+    corpusMode: $("corpusMode"),
+    corpusSearch: $("corpusSearch"),
+    corpusRecordsStatus: $("corpusRecordsStatus"),
+    corpusRefreshBtn: $("corpusRefreshBtn"),
+    corpusRecordsList: $("corpusRecordsList"),
+    corpusExportFormat: $("corpusExportFormat"),
+    corpusExportBtn: $("corpusExportBtn"),
+    corpusExportStatus: $("corpusExportStatus"),
+    analysisPackageDir: $("analysisPackageDir"),
+    chooseAnalysisPackageDirBtn: $("chooseAnalysisPackageDirBtn"),
+    packageIncludeRaw: $("packageIncludeRaw"),
+    packageIncludeFinal: $("packageIncludeFinal"),
+    packageIncludeMetadata: $("packageIncludeMetadata"),
+    analysisPackageStatus: $("analysisPackageStatus"),
+    generateAnalysisPackageBtn: $("generateAnalysisPackageBtn"),
+    copyAnalysisPromptBtn: $("copyAnalysisPromptBtn"),
+    openAnalysisPackageBtn: $("openAnalysisPackageBtn"),
   };
 
   // ===== Dirty state & auto-save =====
@@ -667,6 +692,7 @@
     el.llmBaseUrl.value = activeProviderConfig.url || c.llm?.base_url || c.llm?.url || "";
     el.llmApiKey.value = activeProviderConfig.api_key || c.llm?.api_key || "";
     el.llmModel.value = activeProviderConfig.model || c.llm?.model || activeProviderDefault.model;
+    setAnalysisPackageDir(c.analysis_package?.output_dir || "");
 
     loadAndRenderPrompts();
   }
@@ -1052,6 +1078,9 @@
     if (id === "stats") {
       loadStatsData();
     }
+    if (id === "corpus") {
+      loadCorpusData();
+    }
     if (id === "yaml") {
       syncFormToYaml();
     }
@@ -1390,6 +1419,274 @@
     }
   }
 
+  // ===== Corpus Module =====
+
+  function setAnalysisPackageDir(outputDir) {
+    const value = String(outputDir || "").trim();
+    if (el.analysisPackageDir) {
+      el.analysisPackageDir.textContent = value || "未设置";
+      el.analysisPackageDir.title = value || "";
+    }
+  }
+
+  function modeText(mode) {
+    if (mode === "normal") return "普通";
+    if (mode === "polish") return "润色";
+    return "旧记录";
+  }
+
+  function inputDateValue(date) {
+    return dateKeyFromDate(date);
+  }
+
+  function setCorpusDatePreset(preset) {
+    const today = startOfLocalDay(new Date());
+    const start = new Date(today);
+    if (preset === "today") {
+      // Keep start as today.
+    } else if (preset === "30") {
+      start.setDate(start.getDate() - 29);
+    } else if (preset === "custom") {
+      if (!el.corpusStartDate.value) el.corpusStartDate.value = inputDateValue(start);
+      if (!el.corpusEndDate.value) el.corpusEndDate.value = inputDateValue(today);
+      return;
+    } else {
+      start.setDate(start.getDate() - 6);
+    }
+
+    el.corpusStartDate.value = inputDateValue(start);
+    el.corpusEndDate.value = inputDateValue(today);
+  }
+
+  function ensureCorpusDates() {
+    if (!el.corpusStartDate.value || !el.corpusEndDate.value) {
+      setCorpusDatePreset(el.corpusRangePreset.value || "7");
+    }
+  }
+
+  function readCorpusFilters() {
+    ensureCorpusDates();
+    return {
+      startDate: el.corpusStartDate.value,
+      endDate: el.corpusEndDate.value,
+      mode: el.corpusMode.value || "all",
+      search: el.corpusSearch.value || "",
+    };
+  }
+
+  function updateCorpusPanelCount(items) {
+    const count = Array.isArray(items) ? items.length : 0;
+    if (el.corpusRecordsStatus) {
+      el.corpusRecordsStatus.textContent = `当前筛选 ${formatSessions(count)}`;
+    }
+    if (el.corpusExportStatus) {
+      el.corpusExportStatus.textContent = `将导出当前筛选的 ${formatSessions(count)}`;
+    }
+    if (el.analysisPackageStatus && !lastAnalysisPackageDir) {
+      el.analysisPackageStatus.textContent = `将基于当前筛选的 ${formatSessions(count)} 生成分析包`;
+    }
+  }
+
+  function renderCorpusRecords(items) {
+    const container = el.corpusRecordsList;
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (!items || items.length === 0) {
+      container.innerHTML =
+        '<div class="history-empty"><span style="color:var(--text-muted);font-size:12px">没有匹配的语料记录</span></div>';
+      return;
+    }
+
+    let lastDate = "";
+    for (const item of items) {
+      const d = new Date(item.ts);
+      const hasValidDate = !Number.isNaN(d.getTime());
+      const dateKey = hasValidDate ? dateKeyFromDate(d) : "未知日期";
+      if (dateKey !== lastDate) {
+        const divider = document.createElement("div");
+        divider.className = "history-date-divider";
+        divider.innerHTML = `<span class="history-date-label">${dateKey}</span>`;
+        container.appendChild(divider);
+        lastDate = dateKey;
+      }
+
+      const row = document.createElement("div");
+      row.className = "history-item corpus-item";
+      const time = hasValidDate
+        ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+        : "未知时间";
+      const metaParts = [modeText(item.mode)];
+      if (item.durationMs) metaParts.push(formatDurationMs(item.durationMs));
+      metaParts.push(formatCharacters(item.chars));
+      if (item.promptId) metaParts.push(item.promptId);
+
+      row.innerHTML =
+        `<div class="history-head"><span class="history-time">${time} · ${metaParts.map(escapeHtml).join(" · ")}</span>` +
+        '<div class="history-actions">' +
+        '<button type="button" class="history-action" data-action="expand" title="展开" aria-label="展开记录">...</button>' +
+        `<button type="button" class="history-action" data-action="copy-raw" title="复制 raw" aria-label="复制 raw">${icon("copy")}</button>` +
+        `<button type="button" class="history-action" data-action="copy-final" title="复制 final" aria-label="复制 final">${icon("copy")}</button>` +
+        `<button type="button" class="history-action danger" data-action="delete" title="删除" aria-label="删除记录">${icon("trash-2")}</button>` +
+        "</div></div>" +
+        `<div class="history-text">${escapeHtml(item.finalText || item.text || "")}</div>` +
+        '<div class="corpus-record-detail" hidden>' +
+        `<div class="corpus-record-label">rawText</div><div class="corpus-record-text">${escapeHtml(item.rawText || "")}</div>` +
+        `<div class="corpus-record-label">finalText</div><div class="corpus-record-text">${escapeHtml(item.finalText || item.text || "")}</div>` +
+        `<div class="corpus-record-label">metadata</div><div class="corpus-record-meta">${escapeHtml(
+          JSON.stringify(
+            {
+              id: item.id,
+              mode: item.mode,
+              promptId: item.promptId,
+              llmProvider: item.llmProvider,
+              llmModel: item.llmModel,
+              chars: item.chars,
+              durationMs: item.durationMs || 0,
+            },
+            null,
+            2,
+          ),
+        )}</div>` +
+        "</div>";
+
+      row.querySelector('[data-action="expand"]')?.addEventListener("click", (event) => {
+        const detail = row.querySelector(".corpus-record-detail");
+        const hidden = detail?.hidden !== false;
+        if (detail) detail.hidden = !hidden;
+        event.currentTarget.classList.toggle("is-done", hidden);
+      });
+      row.querySelector('[data-action="copy-raw"]')?.addEventListener("click", async (event) => {
+        await window.voiceSettings.copyText(item.rawText || "");
+        showHistoryCopyToast(event.currentTarget);
+      });
+      row.querySelector('[data-action="copy-final"]')?.addEventListener("click", async (event) => {
+        await window.voiceSettings.copyText(item.finalText || item.text || "");
+        showHistoryCopyToast(event.currentTarget);
+      });
+      row.querySelector('[data-action="delete"]')?.addEventListener("click", async () => {
+        const confirmed = await confirmHistoryDelete(item);
+        if (!confirmed) return;
+        const result = await window.voiceSettings.deleteHistoryItem(item.id);
+        if (result?.ok) {
+          await loadCorpusData();
+          scheduleStatsRefresh();
+        }
+      });
+
+      container.appendChild(row);
+    }
+  }
+
+  async function loadCorpusData() {
+    try {
+      const result = await window.voiceSettings.queryCorpus(readCorpusFilters());
+      const items = result?.items || [];
+      updateCorpusPanelCount(items);
+      renderCorpusRecords(items);
+    } catch (_err) {
+      if (el.corpusRecordsStatus) el.corpusRecordsStatus.textContent = "加载失败";
+    }
+  }
+
+  function scheduleCorpusLoad() {
+    clearTimeout(corpusQueryTimer);
+    corpusQueryTimer = setTimeout(() => {
+      loadCorpusData();
+    }, 180);
+  }
+
+  function switchCorpusTab(tab) {
+    currentCorpusTab = ["records", "export", "package"].includes(tab) ? tab : "records";
+    el.corpusTabs?.querySelectorAll("[data-corpus-tab]").forEach((button) => {
+      const active = button.dataset.corpusTab === currentCorpusTab;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+    });
+    ["records", "export", "package"].forEach((panel) => {
+      const element = $(`corpusPanel${panel[0].toUpperCase()}${panel.slice(1)}`);
+      element?.classList.toggle("hidden", panel !== currentCorpusTab);
+    });
+    loadCorpusData();
+  }
+
+  function readPackageIncludeFields() {
+    return {
+      rawText: el.packageIncludeRaw.checked,
+      finalText: el.packageIncludeFinal.checked,
+      metadata: el.packageIncludeMetadata.checked,
+    };
+  }
+
+  function readAnalysisTargets() {
+    return Array.from(document.querySelectorAll("[data-analysis-target]:checked")).map(
+      (input) => input.dataset.analysisTarget,
+    );
+  }
+
+  async function exportCorpus() {
+    el.corpusExportBtn.disabled = true;
+    el.corpusExportStatus.textContent = "正在准备导出...";
+    try {
+      const result = await window.voiceSettings.exportCorpus({
+        filters: readCorpusFilters(),
+        format: el.corpusExportFormat.value,
+        includeFields: { rawText: true, finalText: true, metadata: true },
+      });
+      if (result?.canceled) {
+        el.corpusExportStatus.textContent = "已取消导出";
+      } else if (result?.ok) {
+        el.corpusExportStatus.textContent = `已导出 ${formatSessions(result.count)}：${result.filePath}`;
+      } else {
+        el.corpusExportStatus.textContent = "导出失败";
+      }
+    } catch (error) {
+      el.corpusExportStatus.textContent = error.message || "导出失败";
+    } finally {
+      el.corpusExportBtn.disabled = false;
+    }
+  }
+
+  async function chooseAnalysisPackageDir() {
+    const result = await window.voiceSettings.chooseAnalysisPackageDir();
+    if (result?.ok) {
+      parsedConfig = result.parsedConfig || parsedConfig;
+      setAnalysisPackageDir(result.outputDir);
+      el.analysisPackageStatus.textContent = "分析包目录已更新";
+    }
+  }
+
+  async function generateAnalysisPackage() {
+    el.generateAnalysisPackageBtn.disabled = true;
+    el.analysisPackageStatus.textContent = "正在生成分析包...";
+    try {
+      const result = await window.voiceSettings.generateAnalysisPackage({
+        filters: readCorpusFilters(),
+        includeFields: readPackageIncludeFields(),
+        targets: readAnalysisTargets(),
+      });
+      if (result?.canceled) {
+        el.analysisPackageStatus.textContent = "已取消生成";
+        return;
+      }
+      if (result?.ok) {
+        parsedConfig = result.parsedConfig || parsedConfig;
+        lastAnalysisPromptText = result.promptText || "";
+        lastAnalysisPackageDir = result.packageDir || "";
+        setAnalysisPackageDir(result.outputDir);
+        el.analysisPackageStatus.textContent = `已生成 ${formatSessions(result.summary?.count || 0)}：${lastAnalysisPackageDir}`;
+        el.copyAnalysisPromptBtn.disabled = !lastAnalysisPromptText;
+        el.openAnalysisPackageBtn.disabled = !lastAnalysisPackageDir;
+      } else {
+        el.analysisPackageStatus.textContent = "生成失败";
+      }
+    } catch (error) {
+      el.analysisPackageStatus.textContent = error.message || "生成失败";
+    } finally {
+      el.generateAnalysisPackageBtn.disabled = false;
+    }
+  }
+
   function scheduleStatsRefresh() {
     const currentSection = document.querySelector(".main-inner")?.dataset.section;
     if (currentSection !== "home" && currentSection !== "stats") return;
@@ -1444,6 +1741,37 @@ SOFTWARE.`;
     const expanded = button.getAttribute("aria-expanded") === "true";
     button.setAttribute("aria-expanded", String(!expanded));
     panel.hidden = expanded;
+  });
+
+  el.corpusTabs?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-corpus-tab]");
+    if (!button) return;
+    switchCorpusTab(button.dataset.corpusTab);
+  });
+  el.corpusRangePreset?.addEventListener("change", () => {
+    setCorpusDatePreset(el.corpusRangePreset.value);
+    loadCorpusData();
+  });
+  el.corpusStartDate?.addEventListener("change", () => {
+    el.corpusRangePreset.value = "custom";
+    loadCorpusData();
+  });
+  el.corpusEndDate?.addEventListener("change", () => {
+    el.corpusRangePreset.value = "custom";
+    loadCorpusData();
+  });
+  el.corpusMode?.addEventListener("change", loadCorpusData);
+  el.corpusSearch?.addEventListener("input", scheduleCorpusLoad);
+  el.corpusRefreshBtn?.addEventListener("click", loadCorpusData);
+  el.corpusExportBtn?.addEventListener("click", exportCorpus);
+  el.chooseAnalysisPackageDirBtn?.addEventListener("click", chooseAnalysisPackageDir);
+  el.generateAnalysisPackageBtn?.addEventListener("click", generateAnalysisPackage);
+  el.copyAnalysisPromptBtn?.addEventListener("click", async () => {
+    await window.voiceSettings.copyText(lastAnalysisPromptText);
+    showHistoryCopyToast(el.copyAnalysisPromptBtn);
+  });
+  el.openAnalysisPackageBtn?.addEventListener("click", () => {
+    window.voiceSettings.openAnalysisPackageDir(lastAnalysisPackageDir).catch(() => {});
   });
 
   // Theme buttons
@@ -2389,6 +2717,7 @@ SOFTWARE.`;
 
   // ===== Init =====
   initIcons();
+  setCorpusDatePreset(el.corpusRangePreset?.value || "7");
   loadSettings();
   loadHomeData();
   initOverlayAppearance();

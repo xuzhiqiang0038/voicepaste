@@ -33,6 +33,7 @@ const {
 const { createAsrSession } = require("./asrService");
 const { pasteTextToFocusedElement } = require("./pasteService");
 const { structureText, getProviderId, getLlmModel } = require("./llmService");
+const { writeCorpusExport, writeAnalysisPackage } = require("./corpusService");
 const { logInfo, logError, resolveLogPath, closeLogger } = require("./logger");
 const { shouldRecoverStuckToggleChord } = require("./hotkeyRecovery");
 const {
@@ -40,6 +41,7 @@ const {
   recordSession,
   getStats,
   getHistory,
+  queryHistory,
   deleteHistoryItem,
 } = require("./statsService");
 const { uIOhook, UiohookKey } = require("uiohook-napi");
@@ -1238,6 +1240,50 @@ function applySettingsTitleBarOverlay() {
   settingsWindow.setTitleBarOverlay(getSettingsTitleBarOverlay());
 }
 
+async function chooseDirectory(title, defaultPath) {
+  const result = await dialog.showOpenDialog(settingsWindow, {
+    title,
+    defaultPath: defaultPath || undefined,
+    properties: ["openDirectory", "createDirectory"],
+  });
+
+  if (result.canceled || !result.filePaths?.[0]) {
+    return null;
+  }
+
+  return result.filePaths[0];
+}
+
+function getAnalysisPackageOutputDir() {
+  return String(getEditableConfig().analysis_package?.output_dir || "").trim();
+}
+
+function saveAnalysisPackageOutputDir(outputDir) {
+  const config = getEditableConfig();
+  config.analysis_package = {
+    ...(config.analysis_package || {}),
+    output_dir: outputDir,
+  };
+  saveConfig(config);
+  reloadRuntimeConfig();
+  return outputDir;
+}
+
+async function ensureAnalysisPackageOutputDir() {
+  const configured = getAnalysisPackageOutputDir();
+  if (configured) {
+    fs.mkdirSync(configured, { recursive: true });
+    return configured;
+  }
+
+  const selected = await chooseDirectory("选择分析包存放文件夹");
+  if (!selected) {
+    return null;
+  }
+
+  return saveAnalysisPackageOutputDir(selected);
+}
+
 function getTrayIconPath() {
   if (app.isPackaged) {
     if (process.platform === "win32") {
@@ -1642,6 +1688,85 @@ function initializeApp() {
 
   ipcMain.handle("stats:delete-history-item", async (_event, id) => {
     return deleteHistoryItem(String(id || ""));
+  });
+
+  ipcMain.handle("corpus:query", async (_event, options) => {
+    return queryHistory(options || {});
+  });
+
+  ipcMain.handle("corpus:export", async (_event, payload = {}) => {
+    const query = queryHistory({
+      ...(payload.filters || {}),
+      order: "asc",
+    });
+    const outputDir = await chooseDirectory("选择语料导出文件夹");
+    if (!outputDir) {
+      return { ok: false, canceled: true };
+    }
+    return writeCorpusExport(
+      query.items,
+      {
+        format: payload.format || "jsonl",
+        includeFields: payload.includeFields || {},
+        range: query.range,
+        mode: query.mode,
+        search: query.search,
+      },
+      outputDir,
+    );
+  });
+
+  ipcMain.handle("analysis-package:choose-dir", async () => {
+    const selected = await chooseDirectory("选择分析包存放文件夹", getAnalysisPackageOutputDir());
+    if (!selected) {
+      return { ok: false, canceled: true };
+    }
+    return {
+      ok: true,
+      outputDir: saveAnalysisPackageOutputDir(selected),
+      parsedConfig: getEditableConfig(),
+    };
+  });
+
+  ipcMain.handle("analysis-package:generate", async (_event, payload = {}) => {
+    const outputDir = await ensureAnalysisPackageOutputDir();
+    if (!outputDir) {
+      return { ok: false, canceled: true };
+    }
+
+    const query = queryHistory({
+      ...(payload.filters || {}),
+      order: "asc",
+    });
+    const result = writeAnalysisPackage(
+      query.items,
+      {
+        includeFields: payload.includeFields || {},
+        targets: payload.targets || [],
+        range: query.range,
+        mode: query.mode,
+        search: query.search,
+      },
+      outputDir,
+    );
+
+    return {
+      ...result,
+      outputDir,
+      parsedConfig: getEditableConfig(),
+    };
+  });
+
+  ipcMain.handle("analysis-package:open-dir", async (_event, directoryPath) => {
+    const target = String(directoryPath || getAnalysisPackageOutputDir() || "");
+    if (!target) {
+      return { ok: false, message: "未设置分析包目录" };
+    }
+    const message = await shell.openPath(target);
+    return {
+      ok: !message,
+      message,
+    };
   });
 
   ipcMain.handle("settings:copy-text", async (_event, text) => {
