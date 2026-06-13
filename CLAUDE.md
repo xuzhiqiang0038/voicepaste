@@ -81,6 +81,16 @@ Contains hotkey, app-level behavior toggles (`remove_trailing_period`, `keep_cli
 - 完成、跳过、阻塞、重新定义任何语料库/历史/分析事项后，必须在最终回复前更新 `CHECKPOINT.md`。
 - `CHECKPOINT.md` 必须让用户和后续 agent 都看得懂：标记已完成事项，记录被阻塞的决策，并在需要时补充验证结果。
 
+## 默认提交规则
+
+- 每个独立需求完成后，默认创建一次 git commit，除非用户明确要求不要提交。
+- 提交必须尽量原子化，只包含本次需求相关文件。
+- 开始工作前先查看 `git status`；如果已有无关未提交改动，不要纳入本次提交。
+- 代码改动后运行 `pnpm check`。如果检查失败但仍需要保存当前版本，可以提交，但必须在最终回复和 commit body 中说明失败项与风险。
+- 不要自动 push、不要自动发布、不要修改生产安装，除非用户明确批准。
+- Commit message 使用英文 Conventional Commit。
+- 如果提交相关情况没有被上述规则覆盖，或者无法安全判断本次改动与已有改动的边界，必须先询问用户，由用户决定。
+
 ## Code Commit Convention
 
 - Commit message prefixes must use Conventional Commit style, such as `fix:`, `feat:`, `refactor:`, `docs:`
