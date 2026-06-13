@@ -107,11 +107,13 @@
 - [x] 生成 `corpus.jsonl`、`corpus.md`、`summary.json`、`PROMPT.md`、`ANALYSIS.md`。
 - [x] `PROMPT.md` 要求外部 Agent 读取同目录语料，并把结果写入 `ANALYSIS.md`。
 - [x] 提供复制提示词和打开目录按钮。
+- [x] 分析包按钮按流程引导用户：未生成时突出 `生成`，生成成功后突出 `复制提示词`，复制后突出 `打开目录`；筛选或目标变化后回到待生成状态。
 
 验证记录（2026-06-13）：
 
 - `pnpm check` 通过。
 - `main/corpusService.js` 通过 Node 级文件生成验证：JSONL、Markdown、CSV 导出和分析包 5 个文件均能生成。
+- 分析包按钮状态流转已通过静态检查：`pnpm check` 和 `node --check renderer/settings.js` 通过。
 - 本阶段未启动 Electron 手动点 UI；需要用户在开发版中复核三页签切换、筛选、复制、删除、首次目录选择和打开目录。
 
 ## 4. Phase 3 - 本地统计

@@ -11,6 +11,8 @@
   let corpusQueryTimer = null;
   let lastAnalysisPromptText = "";
   let lastAnalysisPackageDir = "";
+  let analysisPackageState = "idle";
+  let analysisPackageCopyTimer = null;
   let hasAutoCheckedUpdates = false;
   let statsRefreshTimer = null;
 
@@ -1429,6 +1431,52 @@
     }
   }
 
+  function setButtonAccent(button, active) {
+    button?.classList.toggle("btn-accent", Boolean(active));
+  }
+
+  function setAnalysisPackageFlowState(state) {
+    analysisPackageState = state;
+    clearTimeout(analysisPackageCopyTimer);
+    analysisPackageCopyTimer = null;
+
+    const isIdle = state === "idle";
+    const isGenerating = state === "generating";
+    const isGenerated = state === "generated";
+    const isCopied = state === "copied";
+
+    if (el.generateAnalysisPackageBtn) {
+      el.generateAnalysisPackageBtn.disabled = isGenerating || isGenerated || isCopied;
+      el.generateAnalysisPackageBtn.textContent = isGenerating
+        ? "生成中..."
+        : isIdle
+          ? "生成"
+          : "已生成";
+      setButtonAccent(el.generateAnalysisPackageBtn, isIdle);
+    }
+
+    if (el.copyAnalysisPromptBtn) {
+      el.copyAnalysisPromptBtn.disabled = isIdle || isGenerating || !lastAnalysisPromptText;
+      el.copyAnalysisPromptBtn.textContent = isCopied ? "已复制" : "复制提示词";
+      setButtonAccent(el.copyAnalysisPromptBtn, isGenerated);
+    }
+
+    if (el.openAnalysisPackageBtn) {
+      el.openAnalysisPackageBtn.disabled = isIdle || isGenerating || !lastAnalysisPackageDir;
+      el.openAnalysisPackageBtn.textContent = "打开目录";
+      setButtonAccent(el.openAnalysisPackageBtn, isCopied);
+    }
+  }
+
+  function resetAnalysisPackageFlow(message) {
+    lastAnalysisPromptText = "";
+    lastAnalysisPackageDir = "";
+    setAnalysisPackageFlowState("idle");
+    if (message && el.analysisPackageStatus) {
+      el.analysisPackageStatus.textContent = message;
+    }
+  }
+
   function modeText(mode) {
     if (mode === "normal") return "普通";
     if (mode === "polish") return "润色";
@@ -1482,7 +1530,7 @@
     if (el.corpusExportStatus) {
       el.corpusExportStatus.textContent = `将导出当前筛选的 ${formatSessions(count)}`;
     }
-    if (el.analysisPackageStatus && !lastAnalysisPackageDir) {
+    if (el.analysisPackageStatus && analysisPackageState === "idle") {
       el.analysisPackageStatus.textContent = `将基于当前筛选的 ${formatSessions(count)} 生成分析包`;
     }
   }
@@ -1596,6 +1644,16 @@
     }, 180);
   }
 
+  function handleCorpusCriteriaChange() {
+    resetAnalysisPackageFlow("条件已变化，请重新生成分析包");
+    loadCorpusData();
+  }
+
+  function handleCorpusSearchChange() {
+    resetAnalysisPackageFlow("条件已变化，请重新生成分析包");
+    scheduleCorpusLoad();
+  }
+
   function switchCorpusTab(tab) {
     currentCorpusTab = ["records", "export", "package"].includes(tab) ? tab : "records";
     el.corpusTabs?.querySelectorAll("[data-corpus-tab]").forEach((button) => {
@@ -1652,12 +1710,12 @@
     if (result?.ok) {
       parsedConfig = result.parsedConfig || parsedConfig;
       setAnalysisPackageDir(result.outputDir);
-      el.analysisPackageStatus.textContent = "分析包目录已更新";
+      resetAnalysisPackageFlow("分析包目录已更新，请重新生成分析包");
     }
   }
 
   async function generateAnalysisPackage() {
-    el.generateAnalysisPackageBtn.disabled = true;
+    setAnalysisPackageFlowState("generating");
     el.analysisPackageStatus.textContent = "正在生成分析包...";
     try {
       const result = await window.voiceSettings.generateAnalysisPackage({
@@ -1675,15 +1733,18 @@
         lastAnalysisPackageDir = result.packageDir || "";
         setAnalysisPackageDir(result.outputDir);
         el.analysisPackageStatus.textContent = `已生成 ${formatSessions(result.summary?.count || 0)}：${lastAnalysisPackageDir}`;
-        el.copyAnalysisPromptBtn.disabled = !lastAnalysisPromptText;
-        el.openAnalysisPackageBtn.disabled = !lastAnalysisPackageDir;
+        setAnalysisPackageFlowState("generated");
       } else {
         el.analysisPackageStatus.textContent = "生成失败";
+        setAnalysisPackageFlowState("idle");
       }
     } catch (error) {
       el.analysisPackageStatus.textContent = error.message || "生成失败";
+      setAnalysisPackageFlowState("idle");
     } finally {
-      el.generateAnalysisPackageBtn.disabled = false;
+      if (analysisPackageState === "generating") {
+        setAnalysisPackageFlowState("idle");
+      }
     }
   }
 
@@ -1750,18 +1811,18 @@ SOFTWARE.`;
   });
   el.corpusRangePreset?.addEventListener("change", () => {
     setCorpusDatePreset(el.corpusRangePreset.value);
-    loadCorpusData();
+    handleCorpusCriteriaChange();
   });
   el.corpusStartDate?.addEventListener("change", () => {
     el.corpusRangePreset.value = "custom";
-    loadCorpusData();
+    handleCorpusCriteriaChange();
   });
   el.corpusEndDate?.addEventListener("change", () => {
     el.corpusRangePreset.value = "custom";
-    loadCorpusData();
+    handleCorpusCriteriaChange();
   });
-  el.corpusMode?.addEventListener("change", loadCorpusData);
-  el.corpusSearch?.addEventListener("input", scheduleCorpusLoad);
+  el.corpusMode?.addEventListener("change", handleCorpusCriteriaChange);
+  el.corpusSearch?.addEventListener("input", handleCorpusSearchChange);
   el.corpusRefreshBtn?.addEventListener("click", loadCorpusData);
   el.corpusExportBtn?.addEventListener("click", exportCorpus);
   el.chooseAnalysisPackageDirBtn?.addEventListener("click", chooseAnalysisPackageDir);
@@ -1769,9 +1830,25 @@ SOFTWARE.`;
   el.copyAnalysisPromptBtn?.addEventListener("click", async () => {
     await window.voiceSettings.copyText(lastAnalysisPromptText);
     showHistoryCopyToast(el.copyAnalysisPromptBtn);
+    setAnalysisPackageFlowState("copied");
+    analysisPackageCopyTimer = setTimeout(() => {
+      if (analysisPackageState === "copied" && el.copyAnalysisPromptBtn) {
+        el.copyAnalysisPromptBtn.textContent = "复制提示词";
+      }
+    }, 1200);
   });
   el.openAnalysisPackageBtn?.addEventListener("click", () => {
     window.voiceSettings.openAnalysisPackageDir(lastAnalysisPackageDir).catch(() => {});
+  });
+  [el.packageIncludeRaw, el.packageIncludeFinal, el.packageIncludeMetadata].forEach((input) => {
+    input?.addEventListener("change", () => {
+      resetAnalysisPackageFlow("条件已变化，请重新生成分析包");
+    });
+  });
+  document.querySelectorAll("[data-analysis-target]").forEach((input) => {
+    input.addEventListener("change", () => {
+      resetAnalysisPackageFlow("条件已变化，请重新生成分析包");
+    });
   });
 
   // Theme buttons
@@ -2718,6 +2795,7 @@ SOFTWARE.`;
   // ===== Init =====
   initIcons();
   setCorpusDatePreset(el.corpusRangePreset?.value || "7");
+  setAnalysisPackageFlowState("idle");
   loadSettings();
   loadHomeData();
   initOverlayAppearance();
