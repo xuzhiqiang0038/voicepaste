@@ -211,6 +211,7 @@
     removeTrailingPeriod: $("removeTrailingPeriod"),
     keepClipboard: $("keepClipboard"),
     boostingTableId: $("boostingTableId"),
+    correctTableId: $("correctTableId"),
     hotwordTags: $("hotwordTags"),
     hotwordHint: $("hotwordHint"),
     newHotword: $("newHotword"),
@@ -667,6 +668,7 @@
     updateSoundControls();
 
     el.boostingTableId.value = c.request?.corpus?.boosting_table_id || "";
+    el.correctTableId.value = c.request?.corpus?.correct_table_id || "";
 
     const raw = c.request?.corpus?.context_hotwords;
     if (typeof raw === "string") {
@@ -742,6 +744,7 @@
 
     config.request.corpus = config.request.corpus || {};
     config.request.corpus.boosting_table_id = el.boostingTableId.value.trim();
+    config.request.corpus.correct_table_id = el.correctTableId.value.trim();
     config.request.corpus.context_hotwords = hotwords.join(", ");
 
     config.llm = config.llm || {};
@@ -2243,6 +2246,7 @@ SOFTWARE.`;
     el.resourceId,
     el.language,
     el.boostingTableId,
+    el.correctTableId,
     el.appId,
     el.accessToken,
     el.secretKey,
