@@ -233,7 +233,25 @@ function writeCorpusExport(entries, options, outputDir) {
   };
 }
 
-function buildPrompt(summary, targets, includeFields) {
+function buildReplacementWordsSection(replacementWords) {
+  const text = String(replacementWords || "").trim();
+  if (!text) {
+    return "\n## 当前替换词表\n\n（暂无已配置的替换词）\n";
+  }
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const formatted = lines.map((l) => `- \`${l}\``).join("\n");
+  return `\n## 当前替换词表
+
+以下是用户已在火山引擎控制台配置的替换词（共 ${lines.length} 条），分析时请勿重复建议这些词对：
+
+${formatted}
+`;
+}
+
+function buildPrompt(summary, targets, includeFields, replacementWords) {
   const targetLines = targets.map((target) => `- ${ANALYSIS_TARGETS[target]}`);
   const fieldLine = [
     includeFields.rawText ? "rawText" : null,
@@ -242,6 +260,8 @@ function buildPrompt(summary, targets, includeFields) {
   ]
     .filter(Boolean)
     .join(" / ");
+
+  const replacementSection = buildReplacementWordsSection(replacementWords);
 
   return `# VoicePaste 语料分析提示词
 
@@ -259,6 +279,23 @@ function buildPrompt(summary, targets, includeFields) {
 ## 分析目标
 
 ${targetLines.join("\n")}
+${replacementSection}
+## 替换词建议要求
+
+在 ASR 误识别分析中，如果你发现语料中有反复出现的误识别模式，请在分析结果中增加一个「替换词建议」章节，按以下格式输出：
+
+- 每条格式：\`原词|替换词\`（竖杠分隔，可直接复制到替换词表）
+- 用 ★ 标注置信度：★★★★★ = 必加，★★★★ = 强烈建议，★★★ = 值得考虑
+- **排除上方「当前替换词表」中已有的词对**，只输出增量建议
+- 附简短理由（出现次数、典型上下文）
+
+示例：
+
+\`\`\`
+★★★★★ 绘画|会话 — 出现 22 次，上下文均为"对话/会话"语境
+★★★★  Codec|Codex — 出现 5 次，均指 OpenAI Codex
+★★★   辨识度|辨识度 — 出现 3 次，可能是口音导致
+\`\`\`
 
 ## 输出要求
 
@@ -270,7 +307,8 @@ ${targetLines.join("\n")}
 4. 口语习惯和表达结构
 5. 主题分布和近期关注点
 6. raw 到 final 的润色收益
-7. 后续可改进建议
+7. 替换词建议（增量，排除已有）
+8. 后续可改进建议
 
 如果证据不足，请明确写出“证据不足”，不要猜测。`;
 }
@@ -289,7 +327,7 @@ function writeAnalysisPackage(entries, options, outputDir) {
     `voicepaste-analysis-${formatTimestamp()}-${summary.range.startDate || "start"}_${summary.range.endDate || "end"}`,
   );
   const packageDir = path.join(outputDir, packageName);
-  const promptText = buildPrompt(summary, targets, includeFields);
+  const promptText = buildPrompt(summary, targets, includeFields, options.replacementWords);
 
   fs.mkdirSync(packageDir, { recursive: true });
   fs.writeFileSync(path.join(packageDir, "corpus.jsonl"), toJsonl(normalizedEntries), "utf8");

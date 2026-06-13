@@ -259,6 +259,9 @@
     generateAnalysisPackageBtn: $("generateAnalysisPackageBtn"),
     copyAnalysisPromptBtn: $("copyAnalysisPromptBtn"),
     openAnalysisPackageBtn: $("openAnalysisPackageBtn"),
+    replacementWordsEditor: $("replacementWordsEditor"),
+    replacementWordsHint: $("replacementWordsHint"),
+    replacementWordsCount: $("replacementWordsCount"),
   };
 
   // ===== Dirty state & auto-save =====
@@ -669,6 +672,8 @@
 
     el.boostingTableId.value = c.request?.corpus?.boosting_table_id || "";
     el.correctTableId.value = c.request?.corpus?.correct_table_id || "";
+    el.replacementWordsEditor.value = c.request?.corpus?.replacement_words || "";
+    updateReplacementWordsCount();
 
     const raw = c.request?.corpus?.context_hotwords;
     if (typeof raw === "string") {
@@ -746,6 +751,8 @@
     config.request.corpus.boosting_table_id = el.boostingTableId.value.trim();
     config.request.corpus.correct_table_id = el.correctTableId.value.trim();
     config.request.corpus.context_hotwords = hotwords.join(", ");
+    const rw = el.replacementWordsEditor.value.trim();
+    config.request.corpus.replacement_words = rw || "";
 
     config.llm = config.llm || {};
     config.llm.enabled = el.llmEnabled.checked;
@@ -1657,14 +1664,49 @@
     scheduleCorpusLoad();
   }
 
+  // ===== Replacement Words validation =====
+
+  function validateReplacementWords() {
+    const text = el.replacementWordsEditor.value;
+    const lines = text.split("\n");
+    const errors = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const parts = line.split("|");
+      if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) {
+        errors.push(i + 1);
+      }
+    }
+    const hasError = errors.length > 0;
+    el.replacementWordsEditor.classList.toggle("has-error", hasError);
+    el.replacementWordsHint.classList.toggle("error", hasError);
+    if (hasError) {
+      el.replacementWordsHint.textContent = `第 ${errors.join("、")} 行格式错误，正确格式：原词|替换词`;
+    } else {
+      el.replacementWordsHint.textContent = "";
+    }
+    return !hasError;
+  }
+
+  function updateReplacementWordsCount() {
+    const text = el.replacementWordsEditor.value;
+    const count = text.split("\n").filter((l) => l.trim() && l.includes("|")).length;
+    if (el.replacementWordsCount) {
+      el.replacementWordsCount.textContent = `共 ${count} 条`;
+    }
+  }
+
   function switchCorpusTab(tab) {
-    currentCorpusTab = ["records", "export", "package"].includes(tab) ? tab : "records";
+    currentCorpusTab = ["records", "export", "package", "replacements"].includes(tab)
+      ? tab
+      : "records";
     el.corpusTabs?.querySelectorAll("[data-corpus-tab]").forEach((button) => {
       const active = button.dataset.corpusTab === currentCorpusTab;
       button.classList.toggle("active", active);
       button.setAttribute("aria-selected", String(active));
     });
-    ["records", "export", "package"].forEach((panel) => {
+    ["records", "export", "package", "replacements"].forEach((panel) => {
       const element = $(`corpusPanel${panel[0].toUpperCase()}${panel.slice(1)}`);
       element?.classList.toggle("hidden", panel !== currentCorpusTab);
     });
@@ -2266,6 +2308,16 @@ SOFTWARE.`;
   toggles.forEach((toggle) => {
     if (toggle) toggle.addEventListener("change", saveFormNow);
   });
+
+  // Replacement words editor: validate on input, save only if valid
+  if (el.replacementWordsEditor) {
+    el.replacementWordsEditor.addEventListener("input", () => {
+      updateReplacementWordsCount();
+      if (validateReplacementWords()) {
+        autoSaveForm();
+      }
+    });
+  }
 
   // IPC events from main process
   window.voiceSettings.onEvent((event) => {

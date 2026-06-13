@@ -1034,6 +1034,49 @@ kbd {
   outline-offset: 1px;
 }
 
+/* ===== Replacement Words Editor ===== */
+
+.replacement-words-editor {
+  width: 100%;
+  min-height: 160px;
+  max-height: 50vh;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.replacement-words-editor:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 1px;
+}
+
+.replacement-words-editor.has-error {
+  border-color: var(--red, #e5534b);
+}
+
+.replacement-words-editor.has-error:focus {
+  outline-color: rgba(229, 83, 75, 0.25);
+}
+
+.replacement-words-hint {
+  font-size: 12px;
+  line-height: 1.4;
+  min-height: 18px;
+  color: var(--text-secondary);
+}
+
+.replacement-words-hint.error {
+  color: var(--red, #e5534b);
+}
+
 /* ===== About ===== */
 
 .about-icon {

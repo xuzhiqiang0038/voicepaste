@@ -1746,6 +1746,7 @@ function initializeApp() {
         range: query.range,
         mode: query.mode,
         search: query.search,
+        replacementWords: currentConfig.request?.corpus?.replacement_words || "",
       },
       outputDir,
     );

@@ -170,8 +170,9 @@ function buildApiRequestBody(audioConfig, requestConfig) {
   // corpus 部分
   const corpus = {};
   const rawCorpus = requestConfig.corpus || {};
+  const corpusLocalOnly = new Set(["context_hotwords", "replacement_words", "correct_table_name"]);
   for (const [key, value] of Object.entries(rawCorpus)) {
-    if (key === "context_hotwords") continue; // 单独处理，不发送原数组
+    if (corpusLocalOnly.has(key)) continue;
     if (value === "" || value === undefined || value === null) continue;
     corpus[key] = value;
   }
