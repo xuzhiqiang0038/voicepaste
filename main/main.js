@@ -34,6 +34,7 @@ const { createAsrSession } = require("./asrService");
 const { pasteTextToFocusedElement } = require("./pasteService");
 const { structureText } = require("./llmService");
 const { logInfo, logError, resolveLogPath, closeLogger } = require("./logger");
+const { shouldRecoverStuckToggleChord } = require("./hotkeyRecovery");
 const {
   initStatsService,
   recordSession,
@@ -74,10 +75,12 @@ let isUiohookAvailable = false;
 let uiohookStartError = null;
 let registeredMainShortcut = null;
 let hotkeyChordActive = false;
+let hotkeyChordActiveAt = 0;
 let holdStartTimer = null;
 let holdTriggered = false;
 let activeTemplateShortcut = null;
 let templateHotkeyChordActive = false;
+let templateHotkeyChordActiveAt = 0;
 let templateHoldStartTimer = null;
 let templateHoldTriggered = false;
 let activeSessionPromptId = null;
@@ -244,12 +247,71 @@ function clearTemplateHoldStartTimer() {
 
 function resetHotkeyGestureState() {
   hotkeyChordActive = false;
+  hotkeyChordActiveAt = 0;
   holdTriggered = false;
   clearHoldStartTimer();
   templateHotkeyChordActive = false;
+  templateHotkeyChordActiveAt = 0;
   templateHoldTriggered = false;
   activeTemplateShortcut = null;
   clearTemplateHoldStartTimer();
+}
+
+function recoverStuckMainHotkeyChord(now) {
+  if (getHotkeyMode() !== "toggle") {
+    return false;
+  }
+
+  const keycodes = getConfiguredHotkeyKeycodes();
+  const shouldRecover = shouldRecoverStuckToggleChord({
+    chordActive: hotkeyChordActive,
+    chordActiveAt: hotkeyChordActiveAt,
+    now,
+    keycodes,
+    pressedKeys,
+    isChordPressed: isConfiguredHotkeyPressed(),
+  });
+
+  if (!shouldRecover) {
+    return false;
+  }
+
+  logInfo("hotkey chord recovered after missing keyup", {
+    ageMs: now - hotkeyChordActiveAt,
+    hotkey: getHotkey(),
+  });
+  hotkeyChordActive = false;
+  hotkeyChordActiveAt = 0;
+  return true;
+}
+
+function recoverStuckTemplateHotkeyChord(shortcut, now) {
+  if (!shortcut || shortcut.mode !== "toggle") {
+    return false;
+  }
+
+  const shouldRecover = shouldRecoverStuckToggleChord({
+    chordActive: templateHotkeyChordActive,
+    chordActiveAt: templateHotkeyChordActiveAt,
+    now,
+    keycodes: shortcut.keycodes,
+    pressedKeys,
+    isChordPressed: isExactHotkeyPressed(shortcut.keycodes),
+  });
+
+  if (!shouldRecover) {
+    return false;
+  }
+
+  logInfo("template hotkey chord recovered after missing keyup", {
+    ageMs: now - templateHotkeyChordActiveAt,
+    promptId: shortcut.promptId,
+    hotkey: shortcut.keycodes,
+  });
+  templateHotkeyChordActive = false;
+  templateHotkeyChordActiveAt = 0;
+  activeTemplateShortcut = null;
+  return true;
 }
 
 function handleHoldHotkeyPress() {
@@ -375,8 +437,12 @@ uIOhook.on("keydown", (e) => {
   }
 
   const templateShortcut = findPressedTemplateShortcut();
+  if (templateShortcut && templateHotkeyChordActive) {
+    recoverStuckTemplateHotkeyChord(templateShortcut, now);
+  }
   if (templateShortcut && !templateHotkeyChordActive) {
     templateHotkeyChordActive = true;
+    templateHotkeyChordActiveAt = now;
     activeTemplateShortcut = templateShortcut;
     if (templateShortcut.mode === "hold") {
       handleTemplateHoldHotkeyPress(templateShortcut);
@@ -390,8 +456,13 @@ uIOhook.on("keydown", (e) => {
     return;
   }
 
+  if (hotkeyChordActive) {
+    recoverStuckMainHotkeyChord(now);
+  }
+
   if (isConfiguredHotkeyPressed() && !hotkeyChordActive) {
     hotkeyChordActive = true;
+    hotkeyChordActiveAt = now;
     if (getHotkeyMode() === "hold") {
       handleHoldHotkeyPress();
     } else {
@@ -425,6 +496,7 @@ uIOhook.on("keyup", (e) => {
       !isExactHotkeyPressed(activeTemplateShortcut.keycodes)
     ) {
       templateHotkeyChordActive = false;
+      templateHotkeyChordActiveAt = 0;
       if (activeTemplateShortcut.mode === "hold") {
         handleTemplateHoldHotkeyRelease();
       }
@@ -439,6 +511,7 @@ uIOhook.on("keyup", (e) => {
     !isExactHotkeyPressed(activeTemplateShortcut.keycodes)
   ) {
     templateHotkeyChordActive = false;
+    templateHotkeyChordActiveAt = 0;
     if (activeTemplateShortcut.mode === "hold") {
       handleTemplateHoldHotkeyRelease();
     }
@@ -447,6 +520,7 @@ uIOhook.on("keyup", (e) => {
 
   if (!isConfiguredHotkeyPressed()) {
     hotkeyChordActive = false;
+    hotkeyChordActiveAt = 0;
     if (getHotkeyMode() === "hold") {
       handleHoldHotkeyRelease();
     }
