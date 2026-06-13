@@ -282,24 +282,24 @@
               <button
                 type="button"
                 class="seg-btn"
-                data-corpus-tab="package"
-                role="tab"
-                aria-selected="false"
-              >
-                分析包
-              </button>
-              <button
-                type="button"
-                class="seg-btn"
                 data-corpus-tab="replacements"
                 role="tab"
                 aria-selected="false"
               >
                 替换词
               </button>
+              <button
+                type="button"
+                class="seg-btn"
+                data-corpus-tab="package"
+                role="tab"
+                aria-selected="false"
+              >
+                分析包
+              </button>
             </div>
 
-            <div class="section-card corpus-filter-card">
+            <div class="section-card corpus-filter-card" id="corpusFilterCard">
               <div class="corpus-filter-grid">
                 <label class="corpus-field">
                   <span>日期范围</span>
@@ -433,29 +433,24 @@
             </div>
 
             <div class="corpus-panel hidden" id="corpusPanelReplacements">
-              <div class="section-card">
-                <div class="row vertical">
-                  <div class="row-label">
-                    <div class="title">替换词列表</div>
-                    <div class="desc">
-                      每行一条，格式：<code>原词|替换词</code>。与火山引擎控制台保持同步，生成分析包时自动注入。
-                    </div>
-                  </div>
-                  <textarea
-                    id="replacementWordsEditor"
-                    class="replacement-words-editor"
-                    spellcheck="false"
-                    placeholder="Cloud Code|Claude Code&#10;cloud|Claude&#10;绘画|会话"
-                  ></textarea>
-                  <div class="replacement-words-hint" id="replacementWordsHint"></div>
-                </div>
-                <div class="row">
-                  <div class="row-label">
-                    <div class="title" id="replacementWordsCount">共 0 条</div>
-                    <div class="desc">修改后自动保存到配置文件</div>
-                  </div>
+              <div class="replacement-words-header">
+                <div class="replacement-words-title">替换词列表</div>
+                <div class="replacement-words-meta">
+                  <span id="replacementWordsCount">共 0 条</span>
+                  <span class="replacement-words-sep">&middot;</span>
+                  <span>修改后自动保存</span>
                 </div>
               </div>
+              <div class="replacement-words-desc">
+                每行一条，格式：<code>原词|替换词</code>。与火山引擎控制台保持同步，生成分析包时自动注入。
+              </div>
+              <textarea
+                id="replacementWordsEditor"
+                class="replacement-words-editor"
+                spellcheck="false"
+                placeholder="Cloud Code|Claude Code&#10;cloud|Claude&#10;绘画|会话"
+              ></textarea>
+              <div class="replacement-words-hint" id="replacementWordsHint"></div>
             </div>
           </section>
 

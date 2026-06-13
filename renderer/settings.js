@@ -239,6 +239,7 @@
     promptsList: $("promptsList"),
     addPromptBtn: $("addPromptBtn"),
     corpusTabs: $("corpusTabs"),
+    corpusFilterCard: $("corpusFilterCard"),
     corpusRangePreset: $("corpusRangePreset"),
     corpusStartDate: $("corpusStartDate"),
     corpusEndDate: $("corpusEndDate"),
@@ -1091,7 +1092,11 @@
       loadStatsData();
     }
     if (id === "corpus") {
-      loadCorpusData();
+      if (currentCorpusTab === "replacements") {
+        requestAnimationFrame(autoResizeReplacementWords);
+      } else {
+        loadCorpusData();
+      }
     }
     if (id === "yaml") {
       syncFormToYaml();
@@ -1697,6 +1702,37 @@
     }
   }
 
+  function autoResizeReplacementWords() {
+    const textarea = el.replacementWordsEditor;
+    if (!textarea) return;
+    textarea.style.height = "";
+    if (currentCorpusTab !== "replacements" || textarea.offsetParent === null) return;
+    textarea.style.height = `${Math.max(textarea.clientHeight, textarea.scrollHeight)}px`;
+  }
+
+  function cleanReplacementWordsBlankLines() {
+    const textarea = el.replacementWordsEditor;
+    if (!textarea) return;
+    const pos = textarea.selectionStart;
+    const before = textarea.value;
+    // Remove consecutive blank lines, keep single newline between entries
+    const cleaned = before
+      .split("\n")
+      .filter((line, i, arr) => {
+        // Keep non-empty lines; keep at most one trailing empty line
+        if (line.trim()) return true;
+        // Remove blank lines unless it's the very last line (cursor placeholder)
+        if (i === arr.length - 1) return true;
+        return false;
+      })
+      .join("\n");
+    if (cleaned !== before) {
+      textarea.value = cleaned;
+      textarea.selectionStart = Math.min(pos, cleaned.length);
+      textarea.selectionEnd = textarea.selectionStart;
+    }
+  }
+
   function switchCorpusTab(tab) {
     currentCorpusTab = ["records", "export", "package", "replacements"].includes(tab)
       ? tab
@@ -1710,7 +1746,14 @@
       const element = $(`corpusPanel${panel[0].toUpperCase()}${panel.slice(1)}`);
       element?.classList.toggle("hidden", panel !== currentCorpusTab);
     });
-    loadCorpusData();
+    if (el.corpusFilterCard) {
+      el.corpusFilterCard.classList.toggle("hidden", currentCorpusTab === "replacements");
+    }
+    if (currentCorpusTab === "replacements") {
+      requestAnimationFrame(autoResizeReplacementWords);
+    } else {
+      loadCorpusData();
+    }
   }
 
   function readPackageIncludeFields() {
@@ -2312,10 +2355,23 @@ SOFTWARE.`;
   // Replacement words editor: validate on input, save only if valid
   if (el.replacementWordsEditor) {
     el.replacementWordsEditor.addEventListener("input", () => {
+      cleanReplacementWordsBlankLines();
       updateReplacementWordsCount();
+      autoResizeReplacementWords();
       if (validateReplacementWords()) {
         autoSaveForm();
       }
+    });
+    el.replacementWordsEditor.addEventListener("paste", () => {
+      // Defer to after paste content is applied
+      setTimeout(() => {
+        cleanReplacementWordsBlankLines();
+        updateReplacementWordsCount();
+        autoResizeReplacementWords();
+        if (validateReplacementWords()) {
+          autoSaveForm();
+        }
+      }, 0);
     });
   }
 
