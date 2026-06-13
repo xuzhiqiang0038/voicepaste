@@ -30,15 +30,21 @@
 
 目标：从新录音开始，不再丢失豆包原始识别文本，同时不改变用户的语音输入手感。
 
-- [ ] 在豆包 ASR final 文本确定后、进入 LLM 润色或其他最终文本处理前，捕获 `rawText`。
-- [ ] 把真正粘贴出去的文本保存为 `finalText`。
-- [ ] 保留旧字段 `text`，并让它等于 `finalText`，保证旧 UI 和旧统计逻辑不坏。
-- [ ] 新增元数据字段：`mode`、`promptId`、`llmProvider`、`llmModel`、`durationMs`、`chars`、`ts`。
-- [ ] 每次语音只追加一条 JSONL 记录，raw/final 都在同一条记录里。
-- [ ] 确保历史写入仍然发生在粘贴成功之后。
-- [ ] 如果同步写入有可测延迟或风险，把历史写入改为延后执行，避免阻塞热键和粘贴流程。
-- [ ] 兼容旧历史记录：旧记录没有 `rawText` 时，读取、展示、统计都要正常。
-- [ ] 代码改动后运行 `pnpm check`。
+- [x] 在豆包 ASR final 文本确定后、进入 LLM 润色或其他最终文本处理前，捕获 `rawText`。
+- [x] 把真正粘贴出去的文本保存为 `finalText`。
+- [x] 保留旧字段 `text`，并让它等于 `finalText`，保证旧 UI 和旧统计逻辑不坏。
+- [x] 新增元数据字段：`mode`、`promptId`、`llmProvider`、`llmModel`、`durationMs`、`chars`、`ts`。
+- [x] 每次语音只追加一条 JSONL 记录，raw/final 都在同一条记录里。
+- [x] 确保历史写入仍然发生在粘贴成功之后。
+- [x] 如果同步写入有可测延迟或风险，把历史写入改为延后执行，避免阻塞热键和粘贴流程。
+- [x] 兼容旧历史记录：旧记录没有 `rawText` 时，读取、展示、统计都要正常。
+- [x] 代码改动后运行 `pnpm check`。
+
+验证记录（2026-06-13）：
+
+- `pnpm check` 通过。
+- `node scripts/inspectLatestHistory.js` 通过；当前最新磁盘记录仍是旧 schema，脚本能派生 `rawText/finalText` 并显示 `storageSchemaComplete: false`。
+- 待用户录入新的普通语音和润色语音后，再运行 `node scripts/inspectLatestHistory.js` 复核新记录应显示 `storageSchemaComplete: true`，并确认 `mode=normal/polish`。
 
 建议的新历史记录结构：
 

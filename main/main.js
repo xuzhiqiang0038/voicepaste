@@ -32,7 +32,7 @@ const {
 } = require("./config");
 const { createAsrSession } = require("./asrService");
 const { pasteTextToFocusedElement } = require("./pasteService");
-const { structureText } = require("./llmService");
+const { structureText, getProviderId, getLlmModel } = require("./llmService");
 const { logInfo, logError, resolveLogPath, closeLogger } = require("./logger");
 const { shouldRecoverStuckToggleChord } = require("./hotkeyRecovery");
 const {
@@ -1025,13 +1025,18 @@ async function finishRecordingFlow() {
 
   try {
     expectingSessionClose = true;
-    const finalText = await session.commitAndAwaitFinal();
+    const asrFinalText = await session.commitAndAwaitFinal();
     const transcriptSnapshot = session.getTranscriptSnapshot();
-    let textToPaste = (
+    const sessionPromptId = activeSessionPromptId;
+    const rawText = (
       transcriptSnapshot.latestResultText ||
-      finalText ||
+      asrFinalText ||
       transcriptSnapshot.finalText
     ).trim();
+    let textToPaste = rawText;
+    let mode = "normal";
+    let llmProvider = null;
+    let llmModel = null;
 
     if (currentConfig.app.remove_trailing_period !== false) {
       if (textToPaste.endsWith("。") || textToPaste.endsWith(".")) {
@@ -1049,19 +1054,20 @@ async function finishRecordingFlow() {
       return;
     }
 
-    if (currentConfig.llm?.enabled && activeSessionPromptId) {
+    if (currentConfig.llm?.enabled && sessionPromptId) {
+      const llmConfig = {
+        ...currentConfig.llm,
+        prompt_id: sessionPromptId,
+      };
+      mode = "polish";
+      llmProvider = getProviderId(llmConfig);
+      llmModel = getLlmModel(llmConfig) || null;
       sendOverlayMessage("hint", {
         level: "info",
         text: "Thinking",
         variant: "progress",
       });
-      textToPaste = await structureText(
-        {
-          ...currentConfig.llm,
-          prompt_id: activeSessionPromptId,
-        },
-        textToPaste,
-      );
+      textToPaste = await structureText(llmConfig, textToPaste);
     }
 
     const keepClipboard = currentConfig.app?.keep_clipboard !== false;
@@ -1104,7 +1110,15 @@ async function finishRecordingFlow() {
     setState("idle");
     activeSessionPromptId = null;
 
-    const historyEntry = recordSession(textToPaste, { durationMs });
+    const historyEntry = recordSession(textToPaste, {
+      rawText,
+      finalText: textToPaste,
+      mode,
+      promptId: sessionPromptId,
+      llmProvider,
+      llmModel,
+      durationMs,
+    });
     sendSettingsMessage("stats-updated", { historyId: historyEntry?.id });
   } catch (error) {
     activeSessionPromptId = null;

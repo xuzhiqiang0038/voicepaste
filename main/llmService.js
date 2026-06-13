@@ -238,6 +238,8 @@ async function structureText(llmConfig, rawText) {
 
 module.exports = {
   structureText,
+  getProviderId,
+  getLlmModel,
   DEFAULT_SYSTEM_PROMPT,
   VOICE_TRANSCRIPT_GUARD_PROMPT,
   PROVIDER_DEFAULTS,

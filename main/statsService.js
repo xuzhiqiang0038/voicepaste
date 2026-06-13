@@ -10,6 +10,7 @@ let dataDir = null;
 let historyDir = null;
 let stats = null;
 let historyBuffer = [];
+let flushTimer = null;
 
 function resolveDataDir() {
   if (dataDir) return dataDir;
@@ -138,6 +139,28 @@ function flushHistory() {
   historyBuffer = [];
 }
 
+function scheduleFlush() {
+  if (flushTimer) return;
+
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    flushHistory();
+    flushStats();
+  }, 0);
+
+  flushTimer.unref?.();
+}
+
+function flushPendingWrites() {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+
+  flushHistory();
+  flushStats();
+}
+
 function makeHistoryId(ts) {
   const timestamp = new Date(ts).getTime() || Date.now();
   return `${timestamp.toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -153,7 +176,19 @@ function hashHistoryEntry(entry) {
 }
 
 function normalizeHistoryEntry(entry, dateKey, lineIndex) {
-  const text = typeof entry?.text === "string" ? entry.text : "";
+  const finalText =
+    typeof entry?.finalText === "string"
+      ? entry.finalText
+      : typeof entry?.text === "string"
+        ? entry.text
+        : "";
+  const rawText =
+    typeof entry?.rawText === "string"
+      ? entry.rawText
+      : typeof entry?.text === "string"
+        ? entry.text
+        : finalText;
+  const text = typeof entry?.text === "string" ? entry.text : finalText;
   const chars = countInputCharacters(text);
   const durationMs = Number(entry?.durationMs || 0);
   return {
@@ -161,6 +196,8 @@ function normalizeHistoryEntry(entry, dateKey, lineIndex) {
     id: entry?.id || `legacy:${dateKey}:${lineIndex}:${hashHistoryEntry(entry)}`,
     ts: entry?.ts || new Date().toISOString(),
     text,
+    rawText,
+    finalText,
     chars,
     ...(durationMs > 0 ? { durationMs } : {}),
   };
@@ -289,7 +326,10 @@ function recordSession(text, options = {}) {
 
   const s = loadStats();
   const now = new Date();
-  const charCount = countInputCharacters(text);
+  const finalText = typeof options.finalText === "string" ? options.finalText : text;
+  const rawText = typeof options.rawText === "string" ? options.rawText : finalText;
+  const mode = options.mode === "polish" ? "polish" : "normal";
+  const charCount = countInputCharacters(finalText);
   const durationMs = Math.max(0, Math.round(Number(options.durationMs || 0)));
 
   if (!s.firstUsedAt) {
@@ -307,14 +347,19 @@ function recordSession(text, options = {}) {
   const historyEntry = {
     id: makeHistoryId(now),
     ts: now.toISOString(),
-    text,
+    text: finalText,
+    rawText,
+    finalText,
+    mode,
+    promptId: options.promptId || null,
+    llmProvider: options.llmProvider || null,
+    llmModel: options.llmModel || null,
     chars: charCount,
     ...(durationMs > 0 ? { durationMs } : {}),
   };
 
   historyBuffer.push(historyEntry);
-  flushHistory();
-  flushStats();
+  scheduleFlush();
 
   return historyEntry;
 }
@@ -330,6 +375,7 @@ function getStats() {
 
 function getHistory(daysBack) {
   ensureHistoryDir();
+  flushPendingWrites();
 
   const days = Math.min(daysBack || 3, 365);
   const allItems = [];
@@ -364,7 +410,7 @@ function getHistory(daysBack) {
 function deleteHistoryItem(id) {
   if (!id) return { ok: false };
   ensureHistoryDir();
-  flushHistory();
+  flushPendingWrites();
 
   const files = fs
     .readdirSync(historyDir)
@@ -414,8 +460,7 @@ function deleteHistoryItem(id) {
 }
 
 function closeStatsService() {
-  flushHistory();
-  flushStats();
+  flushPendingWrites();
 }
 
 module.exports = {
