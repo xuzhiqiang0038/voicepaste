@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.0.0 (2026-06-15)
+
+- **Independent Release Line** — VoicePaste is now maintained from `xuzhiqiang0038/voicepaste` with updated repository, release, update, and app identity metadata.
+- **Corpus Workspace** — Added corpus browsing, filtering, export, analysis package generation, and replacement-word management for long-term voice input review.
+- **History Metadata** — Preserved raw ASR text, final pasted text, mode, prompt, provider, model, character count, and recording duration in history records.
+- **Settings And Overlay Polish** — Added appearance presets, theme accents, live preview, sound controls, usage dashboard refinements, and hotkey stability fixes.
+- **Release Readiness** — Windows NSIS packaging and GitHub Release metadata are prepared for installable builds with auto-update support.
+
 ## v1.2.0 (2026-05-26)
 
 - **LLM Text Polishing** — Integrate Vercel AI SDK with 8 provider support (DeepSeek, OpenAI, Anthropic, Gemini, OpenRouter, SiliconFlow, Ollama, custom OpenAI-compatible) for post-processing ASR output (formatting, polishing, translation, etc.).
