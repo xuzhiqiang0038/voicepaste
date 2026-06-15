@@ -400,14 +400,51 @@
                 <div class="row vertical">
                   <div class="row-label">
                     <div class="title">分析目标</div>
+                    <div class="desc">按层级选择需要的分析维度</div>
                   </div>
-                  <div class="corpus-checkbox-grid corpus-target-grid">
-                    <label><input type="checkbox" data-analysis-target="vocabulary" checked /> 高频词和个人词库</label>
-                    <label><input type="checkbox" data-analysis-target="asr" checked /> ASR 误识别</label>
-                    <label><input type="checkbox" data-analysis-target="speaking" checked /> 口语习惯</label>
-                    <label><input type="checkbox" data-analysis-target="topics" checked /> 主题分布</label>
-                    <label><input type="checkbox" data-analysis-target="polish" checked /> 润色收益</label>
-                    <label><input type="checkbox" data-analysis-target="efficiency" checked /> 输入效率</label>
+                  <div class="analysis-target-layers">
+                    <div class="analysis-layer">
+                      <div class="analysis-layer-label">工具层</div>
+                      <div class="corpus-checkbox-grid corpus-target-grid">
+                        <label><input type="checkbox" data-analysis-target="vocabulary" checked /> 高频词和个人词库</label>
+                        <label><input type="checkbox" data-analysis-target="asr" checked /> ASR 误识别</label>
+                        <label><input type="checkbox" data-analysis-target="code_switching" checked /> 中英混用规范</label>
+                      </div>
+                    </div>
+                    <div class="analysis-layer">
+                      <div class="analysis-layer-label">能量层</div>
+                      <div class="corpus-checkbox-grid corpus-target-grid">
+                        <label><input type="checkbox" data-analysis-target="emotion" checked /> 情绪轨迹</label>
+                        <label><input type="checkbox" data-analysis-target="flow" checked /> 心流时刻</label>
+                        <label><input type="checkbox" data-analysis-target="attention_shift" checked /> 关注点迁移</label>
+                      </div>
+                    </div>
+                    <div class="analysis-layer">
+                      <div class="analysis-layer-label">认知层</div>
+                      <div class="corpus-checkbox-grid corpus-target-grid">
+                        <label><input type="checkbox" data-analysis-target="speaking" checked /> 口语习惯</label>
+                        <label><input type="checkbox" data-analysis-target="topics" checked /> 主题分布</label>
+                        <label><input type="checkbox" data-analysis-target="thought_graph" checked /> 思维连接图谱</label>
+                        <label><input type="checkbox" data-analysis-target="decision_heuristics" checked /> 决策启发式</label>
+                        <label><input type="checkbox" data-analysis-target="metacognition" checked /> 元认知痕迹</label>
+                        <label><input type="checkbox" data-analysis-target="creativity" checked /> 创造力指纹</label>
+                      </div>
+                    </div>
+                    <div class="analysis-layer">
+                      <div class="analysis-layer-label">哲学层</div>
+                      <div class="corpus-checkbox-grid corpus-target-grid">
+                        <label><input type="checkbox" data-analysis-target="values" checked /> 价值观考古</label>
+                        <label><input type="checkbox" data-analysis-target="beliefs" checked /> 信念演化</label>
+                        <label><input type="checkbox" data-analysis-target="self_narrative" checked /> 自我叙事模式</label>
+                      </div>
+                    </div>
+                    <div class="analysis-layer">
+                      <div class="analysis-layer-label">效率层</div>
+                      <div class="corpus-checkbox-grid corpus-target-grid">
+                        <label><input type="checkbox" data-analysis-target="polish" checked /> 润色收益</label>
+                        <label><input type="checkbox" data-analysis-target="efficiency" checked /> 输入效率</label>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div class="row">
