@@ -54,7 +54,7 @@ Reference docs:
 - `package.json.build.win.target` is already `nsis`.
 - `.github/workflows/ci.yml` only runs lint; it does not build or publish installers.
 - GitHub Releases for `xuzhiqiang0038/voicepaste` are currently empty.
-- `.agents/skills/github-release/scripts/render-release-notes.sh` still has a `that-yolanda/voicepaste` compare URL and must be fixed before formal release notes are generated.
+- `.claude/skills/github-release/scripts/render-release-notes.sh` and `.claude/skills/github-release/SKILL.md` still have a `that-yolanda/voicepaste` compare URL and must be fixed before formal release notes are generated.
 - The About page has no explicit project homepage row; add one so the app clearly links to `xuzhiqiang0038/voicepaste`.
 - The MIT license text keeps the original author's copyright. Keep it and add/retain the xuzhiqiang0038 line; do not remove original attribution.
 
@@ -66,7 +66,8 @@ Reference docs:
 
 - Create: `scripts/releaseIdentity.test.js`
 - Modify: `renderer/settings.html`
-- Modify: `.agents/skills/github-release/scripts/render-release-notes.sh`
+- Modify: `.claude/skills/github-release/SKILL.md`
+- Modify: `.claude/skills/github-release/scripts/render-release-notes.sh`
 
 - [ ] **Step 1: Write the failing release identity test**
 
@@ -102,7 +103,8 @@ const filesToScan = [
   "README.md",
   "README.zh.md",
   "renderer/settings.html",
-  ".agents/skills/github-release/scripts/render-release-notes.sh",
+  ".claude/skills/github-release/SKILL.md",
+  ".claude/skills/github-release/scripts/render-release-notes.sh",
 ];
 
 for (const file of filesToScan) {
@@ -116,7 +118,7 @@ const settingsHtml = read("renderer/settings.html");
 const repoLinkCount = settingsHtml.split(expectedRepoUrl).length - 1;
 assert.ok(repoLinkCount >= 2, "settings page should link to the maintained repo from support nav and About");
 
-const releaseNotesScript = read(".agents/skills/github-release/scripts/render-release-notes.sh");
+const releaseNotesScript = read(".claude/skills/github-release/scripts/render-release-notes.sh");
 assert.ok(
   releaseNotesScript.includes("https://github.com/xuzhiqiang0038/voicepaste/compare/"),
   "release notes compare URL should point to the maintained repo",
@@ -160,7 +162,7 @@ The settings window already calls `setWindowOpenHandler` in `main/windowManager.
 
 - [ ] **Step 4: Fix release notes compare URL**
 
-In `.agents/skills/github-release/scripts/render-release-notes.sh`, replace:
+In `.claude/skills/github-release/scripts/render-release-notes.sh`, replace:
 
 ```bash
 compare_url="https://github.com/that-yolanda/voicepaste/compare/v${previous}...v${version}"
@@ -170,6 +172,12 @@ with:
 
 ```bash
 compare_url="https://github.com/xuzhiqiang0038/voicepaste/compare/v${previous}...v${version}"
+```
+
+In `.claude/skills/github-release/SKILL.md`, replace the sample Full Changelog URL with:
+
+```md
+**Full Changelog**: https://github.com/xuzhiqiang0038/voicepaste/compare/v<previous>...v<version>
 ```
 
 - [ ] **Step 5: Verify Task 1**
@@ -191,7 +199,7 @@ Expected:
 - [ ] **Step 6: Commit Task 1**
 
 ```powershell
-pwsh -NoProfile -Command "git add -- scripts/releaseIdentity.test.js renderer/settings.html .agents/skills/github-release/scripts/render-release-notes.sh; git commit -m 'fix(repo): point release surfaces to maintained repository' -m 'Keep the in-app About page and generated release notes aligned with the independent xuzhiqiang0038 repository so packaged builds no longer route users to the original upstream project.'"
+pwsh -NoProfile -Command "git add -- scripts/releaseIdentity.test.js renderer/settings.html .claude/skills/github-release/SKILL.md .claude/skills/github-release/scripts/render-release-notes.sh docs/superpowers/plans/2026-06-15-release-distribution.md; git commit -m 'fix(repo): point release surfaces to maintained repository' -m 'Keep the in-app About page and generated release notes aligned with the independent xuzhiqiang0038 repository so packaged builds no longer route users to the original upstream project.'"
 ```
 
 ---

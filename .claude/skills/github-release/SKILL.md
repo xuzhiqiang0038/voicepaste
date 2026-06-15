@@ -159,7 +159,7 @@ Mirror the historical GitHub Release style:
 - `VoicePaste-<version>-x64.dmg` — macOS (Intel)
 - `VoicePaste-<version>-win-x64.exe` — Windows (x64 NSIS installer)
 
-**Full Changelog**: https://github.com/that-yolanda/voicepaste/compare/v<previous>...v<version>
+**Full Changelog**: https://github.com/xuzhiqiang0038/voicepaste/compare/v<previous>...v<version>
 ```
 
 - Keep the list concise: usually 3-6 bullets.

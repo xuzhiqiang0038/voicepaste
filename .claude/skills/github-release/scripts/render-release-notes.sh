@@ -22,7 +22,7 @@ if [[ -z "$previous" ]]; then
   fi
 fi
 
-compare_url="https://github.com/that-yolanda/voicepaste/compare/v${previous}...v${version}"
+compare_url="https://github.com/xuzhiqiang0038/voicepaste/compare/v${previous}...v${version}"
 
 # Extract changelog section from CHANGELOG.md
 if [[ ! -f CHANGELOG.md ]]; then
