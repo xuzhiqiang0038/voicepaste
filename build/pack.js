@@ -84,7 +84,7 @@ function getElectronBuilderBin() {
 function runBuilder(args, env) {
   return new Promise((resolve, reject) => {
     const bin = getElectronBuilderBin();
-    const child = spawn(bin, args, { stdio: "inherit", env });
+    const child = spawn(bin, args, { stdio: "inherit", env, shell: process.platform === "win32" });
 
     child.on("exit", (code, signal) => {
       if (signal) {
