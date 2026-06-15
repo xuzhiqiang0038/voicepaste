@@ -8,7 +8,7 @@
 
 A voice input tool for macOS & Windows — trigger with a hotkey, speak, auto-paste.
 
-[![Download](https://img.shields.io/badge/Download-Now-green.svg?style=flat&logo=github)](https://github.com/that-yolanda/voicepaste/releases/latest) [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-ff5e5b?logo=ko-fi&logoColor=white)](https://ko-fi.com/thatyolanda)
+[![Download](https://img.shields.io/badge/Download-Now-green.svg?style=flat&logo=github)](https://github.com/xuzhiqiang0038/voicepaste/releases/latest)
 
 </div>
 
@@ -92,7 +92,7 @@ VoicePaste requires **Microphone** and **Accessibility** permissions to function
 2. System Settings → Privacy & Security → Microphone, make sure VoicePaste is authorized
 3. If previously denied, reset via Terminal and re-authorize:
 ```bash
-tccutil reset Microphone com.yolanda.voicepaste
+tccutil reset Microphone com.xuzhiqiang0038.voicepaste
 ```
 
 **Accessibility Permission**
@@ -109,6 +109,9 @@ The non-stream (second-pass) recognition mode does not currently support hotword
 - [Development Guide](docs/development.md)
 - [Changelog](CHANGELOG.md)
 
+## Acknowledgements
+
+This project is independently maintained by xuzhiqiang0038 and is based on the original VoicePaste project by that-yolanda.
 
 ## License
 

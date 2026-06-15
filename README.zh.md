@@ -8,7 +8,7 @@
 
 macOS & Windows 语音输入工具 — 通过快捷键触发语音输入并自动粘贴。
 
-[![Download](https://img.shields.io/badge/Download-Now-green.svg?style=flat&logo=github)](https://github.com/that-yolanda/voicepaste/releases/latest) [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-ff5e5b?logo=ko-fi&logoColor=white)](https://ko-fi.com/thatyolanda)
+[![Download](https://img.shields.io/badge/Download-Now-green.svg?style=flat&logo=github)](https://github.com/xuzhiqiang0038/voicepaste/releases/latest)
 
 </div>
 
@@ -91,7 +91,7 @@ VoicePaste 需要 **麦克风权限** 和 **辅助功能权限** 才能正常工
 2. 系统设置 → 隐私与安全 → 麦克风，确保 VoicePaste 已被授权
 3. 若之前拒绝过，可通过终端重置权限后重新授权：
 ```bash
-tccutil reset Microphone com.yolanda.voicepaste
+tccutil reset Microphone com.xuzhiqiang0038.voicepaste
 ```
 
 **辅助功能权限**
@@ -108,6 +108,9 @@ tccutil reset Microphone com.yolanda.voicepaste
 - [开发说明](docs/development.zh.md)
 - [更新说明](CHANGELOG.zh.md)
 
+## 致谢
+
+本项目由 xuzhiqiang0038 独立维护，基于 that-yolanda 的原始 VoicePaste 项目继续演进。
 
 ## License
 

@@ -2,15 +2,15 @@
   "name": "voicepaste",
   "version": "1.2.0",
   "description": "Voice-to-text input tool — press a hotkey, speak, auto-paste.",
-  "author": "that-yolanda",
+  "author": "xuzhiqiang0038",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/that-yolanda/voicepaste.git"
+    "url": "https://github.com/xuzhiqiang0038/voicepaste.git"
   },
-  "homepage": "https://github.com/that-yolanda/voicepaste#readme",
+  "homepage": "https://github.com/xuzhiqiang0038/voicepaste#readme",
   "bugs": {
-    "url": "https://github.com/that-yolanda/voicepaste/issues"
+    "url": "https://github.com/xuzhiqiang0038/voicepaste/issues"
   },
   "keywords": [
     "electron",
@@ -56,13 +56,13 @@
     "yaml": "^2.8.3"
   },
   "build": {
-    "appId": "com.yolanda.voicepaste",
+    "appId": "com.xuzhiqiang0038.voicepaste",
     "productName": "VoicePaste",
     "npmRebuild": false,
     "afterSign": "build/afterSign.js",
     "publish": {
       "provider": "github",
-      "owner": "that-yolanda",
+      "owner": "xuzhiqiang0038",
       "repo": "voicepaste"
     },
     "files": [
